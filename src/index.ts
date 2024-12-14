@@ -5,6 +5,7 @@ import fs from 'fs';
 
 import { initRoutes } from './routes';
 import connectDb from './config/db';
+import { errorHandler } from './middlewares/errorMiddleware';
 
 // Load environment variables from `.env.local` if it exists, otherwise `.env`.
 if (fs.existsSync('.env.local')) {
@@ -19,6 +20,7 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(errorHandler);
 
 // Connect to MongoDb
 connectDb();
