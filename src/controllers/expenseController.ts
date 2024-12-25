@@ -1,8 +1,7 @@
-import { NextFunction, Response, Request } from 'express';
-import { AuthenticatedRequest } from '../types';
+import { NextFunction, Request, Response } from 'express';
 import Expense, { IExpense } from '../models/expenseModel';
+import { AuthenticatedRequest } from '../types';
 import { ERROR_STRINGS, SUCCESS_STRINGS } from '../utils/response.string';
-import { Types } from 'mongoose';
 
 export const addTransaction = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const userId = req.user!.id;
