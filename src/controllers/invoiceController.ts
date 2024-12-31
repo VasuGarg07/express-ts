@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import PDFDocument from "pdfkit";
+import PDFDocument from "pdfkit
 import { Invoice } from "../models/invoiceModel";
 
 export const generateInvoice = async (req: Request, res: Response, next: NextFunction) => {
