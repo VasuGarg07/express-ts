@@ -1,36 +1,30 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Document, Schema, Types } from "mongoose";
+import { handleDocTransform } from "../utils/utilities";
 
 interface IBlog extends Document {
+    userId: Types.ObjectId;
     author: string;
     title: string;
     coverImageUrl: string;
     blogContent: string;
     tags: string[];
     isArchived: boolean;
-    userId: mongoose.Types.ObjectId;
 }
 
-const blogSchema: Schema = new Schema(
+const blogSchema: Schema = new Schema<IBlog>(
     {
+        userId: { type: Schema.Types.ObjectId, required: true, ref: "users" },
         author: { type: String, required: true },
         title: { type: String, required: true, unique: true },
         coverImageUrl: { type: String, required: true },
         blogContent: { type: String, required: true },
         tags: { type: [String], default: [] },
         isArchived: { type: Boolean, default: false },
-        userId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: "users" },
     },
     {
         timestamps: true,
         toJSON: {
-            transform: (_, ret) => {
-                ret.id = ret._id;
-                ret.createdAt = ret.createdAt.getTime();
-                ret.updatedAt = ret.updatedAt.getTime();
-                delete ret._id;
-                delete ret.__v;
-                return ret;
-            },
+            transform: handleDocTransform
         },
     }
 );

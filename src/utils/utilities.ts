@@ -25,3 +25,12 @@ export const getPaginationParams = (query: PaginationQuery) => {
 
     return { page, limit, skip };
 };
+
+export const handleDocTransform = <T>(doc: T, ret: any): T => {
+    ret.id = ret._id;
+    ret.createdAt = ret.createdAt.getTime();
+    ret.updatedAt = ret.updatedAt.getTime();
+    delete ret._id;
+    delete ret.__v;
+    return ret;
+}
