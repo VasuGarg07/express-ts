@@ -1,4 +1,6 @@
 import { compare, hash } from 'bcrypt';
+import { Request, Response, NextFunction } from "express";
+import { AuthenticatedRequest } from '../types';
 
 interface PaginationQuery {
     page?: string;
@@ -34,3 +36,16 @@ export const handleDocTransform = <T>(doc: T, ret: any): T => {
     delete ret.__v;
     return ret;
 }
+
+
+export const asyncHandler = (
+    handler: (req: Request | AuthenticatedRequest, res: Response, next: NextFunction) => Promise<void>
+) => {
+    return async (req: Request | AuthenticatedRequest, res: Response, next: NextFunction) => {
+        try {
+            await handler(req, res, next);
+        } catch (error) {
+            next(error);
+        }
+    };
+};

@@ -76,9 +76,24 @@ export const jobSchema = z.object({
     responsibilities: z.array(z.string()).optional(),
     requirements: z.array(z.string()).optional(),
     benefits: z.array(z.string()).optional(),
-    applicationDeadline: z.date().optional(),
+    applicationDeadline: z.number().int().positive("Deadline must be a valid Unix timestamp"),
 
     // used for soft delete
     isArchived: z.boolean().optional(),
 });
-export const jobUpdateSchema = jobSchema.optional();
+export const jobUpdateSchema = jobSchema.partial();
+
+export const updateApplicationStatusSchema = z.object({
+    applicationId: z.string().nonempty("Application ID is required"),
+    jobId: z.string().nonempty("Job ID is required"),
+    status: z
+        .enum(["pending", "shortlisted", "rejected", "contacted", "hired"])
+        .optional(),
+    feedback: z.string().optional(),
+    notes: z.string().optional(),
+    interviewDate: z
+        .number()
+        .int("Interview date must be a valid timestamp")
+        .positive("Interview date must be a positive value")
+        .optional(),
+});

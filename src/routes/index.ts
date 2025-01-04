@@ -6,6 +6,7 @@ import expenseRouter from './expenseRoutes';
 import invoiceRouter from './invoiceRoutes';
 import blogRouter from './blogRoutes';
 import jobsRouter from './jobsRoutes';
+import { errorHandler } from '../middlewares/errorMiddleware';
 
 export const initRoutes = (app: Application) => {
     // Public Routes
@@ -19,4 +20,7 @@ export const initRoutes = (app: Application) => {
     app.use('/api/invoice', invoiceRouter);
     app.use('/api/blogify', blogRouter);
     app.use('/api/jobscape', jobsRouter);
+
+    // Global error handler
+    app.use(errorHandler);
 };
