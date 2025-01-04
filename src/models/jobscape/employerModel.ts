@@ -1,8 +1,11 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 import { handleDocTransform } from "../../utils/utilities";
+import { JobscapeUserRole } from "../../utils/types";
 
 export interface IEmployer extends Document {
     userId: Types.ObjectId;
+    role: JobscapeUserRole;
+
     companyName: string;
     logoURL: string;
     contactNumber: string;
@@ -16,6 +19,8 @@ export interface IEmployer extends Document {
 const employerSchema = new Schema<IEmployer>(
     {
         userId: { type: Schema.Types.ObjectId, ref: "users", required: true },
+        role: { type: String, default: "employer" },
+
         companyName: { type: String, required: true },
         logoURL: { type: String, required: true },
         contactNumber: { type: String, required: true, unique: true },

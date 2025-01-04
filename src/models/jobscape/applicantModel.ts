@@ -1,5 +1,6 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 import { handleDocTransform } from "../../utils/utilities";
+import { JobscapeUserRole } from "../../utils/types";
 
 export interface IExperience {
     title: string;
@@ -31,10 +32,13 @@ export interface IPreference {
 
 export interface IApplicant extends Document {
     userId: Types.ObjectId; // Reference to the User schema
+    role: JobscapeUserRole;
+
     fullName: string;
     contactEmail: string;
     phoneNumber: string;
 
+    photoUrl?: string;
     profileSummary?: string;
     resumeURL: string;
     skills: string[];
@@ -50,9 +54,12 @@ export interface IApplicant extends Document {
 const applicantSchema = new Schema<IApplicant>(
     {
         userId: { type: Schema.Types.ObjectId, ref: "users", required: true },
+        role: { type: String, default: 'applicant' },
+
         fullName: { type: String, required: true },
         contactEmail: { type: String, required: true },
         phoneNumber: { type: String, required: true },
+        photoUrl: { type: String },
         profileSummary: { type: String },
         resumeURL: { type: String, required: true },
         skills: { type: [String], required: true },

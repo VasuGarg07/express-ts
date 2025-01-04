@@ -21,7 +21,7 @@ const applicationSchema = new Schema<IApplication>(
             default: "pending",
         },
         coverLetter: { type: String },
-        interviewDate: { type: Number },
+        interviewDate: { type: Number }, // in seconds
         feedback: { type: String },
         notes: { type: String },
     },

@@ -9,7 +9,7 @@ export interface ISavedJob extends Document {
 const savedJobSchema = new Schema<ISavedJob>(
     {
         applicantId: { type: Schema.Types.ObjectId, ref: "applicants", required: true },
-        jobId: { type: Schema.Types.ObjectId, ref: "Job", required: true },
+        jobId: { type: Schema.Types.ObjectId, ref: "jobs", required: true },
     },
     {
         timestamps: true,

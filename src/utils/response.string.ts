@@ -2,10 +2,12 @@ export const ERROR_STRINGS = {
     IncorrectPassword: "Password don't match. Please verify",
     UserNotFound: "User not found",
     InvalidCreds: "Invalid Credentials.",
-    ServerError: "Internal server error. Something went wrong.",
+    ServerError: "Internal server error. An unexpected error occurred.",
     NoRefToken: "Refresh token is required",
     InvalidToken: "Invalid or expired refresh token",
     UnauthorizedAccess: "Unauthorized Access",
+
+    ForbiddenAction: "You do not have permission for this action",
 
     // expenses
     InvalidTxnId: "Transaction ID is required and must be valid",

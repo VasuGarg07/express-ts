@@ -20,6 +20,7 @@ export interface IJob extends Document, Partial<IJobDetails> {
     shiftType: 'day' | 'night' | 'flexible';
 
     applicationDeadline?: number; // in seconds
+    isArchived?: boolean;
 }
 
 
@@ -49,6 +50,7 @@ const jobSchema = new Schema<IJob>(
         benefits: { type: [String] },
 
         applicationDeadline: { type: Number },
+        isArchived: { type: Boolean, default: false },
     },
     {
         timestamps: true,
