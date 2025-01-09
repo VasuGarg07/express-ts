@@ -70,6 +70,7 @@ export const jobSchema = z.object({
     salaryRange: z.string().min(1, "Salary range is required"),
     employmentType: z.enum(["full-time", "part-time", "contractual", "freelance", "internship"]),
     shiftType: z.enum(["day", "night", "flexible"]),
+    vacancies: z.number().positive("Vacancies must be greater than zero"),
 
     // secondary attributes
     description: z.string().optional(),

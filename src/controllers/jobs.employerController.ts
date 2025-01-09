@@ -4,6 +4,7 @@ import { Application } from '../models/jobscape/applicationModel';
 import { Job } from '../models/jobscape/jobModel';
 import { AuthenticatedRequest } from '../types';
 import { ERROR_STRINGS, SUCCESS_STRINGS } from '../utils/response.string';
+import { SavedJob } from '../models/jobscape/savedJobs';
 
 const getJobSummary = async (employerId: string) => {
     const [summary] = await Job.aggregate([
@@ -134,6 +135,7 @@ export const postJob = async (req: AuthenticatedRequest, res: Response) => {
         salaryRange,
         employmentType,
         shiftType,
+        vacancies,
         description,
         responsibilities,
         requirements,
@@ -151,6 +153,7 @@ export const postJob = async (req: AuthenticatedRequest, res: Response) => {
         salaryRange,
         employmentType,
         shiftType,
+        vacancies,
         description,
         responsibilities,
         requirements,
@@ -165,6 +168,14 @@ export const postJob = async (req: AuthenticatedRequest, res: Response) => {
 export const getJobDetails = async (req: AuthenticatedRequest, res: Response) => {
     const { jobId } = req.params;
     const { profileId } = req;
+
+    if (!jobId || !ObjectId.isValid(jobId)) {
+        res.status(400).json({
+            success: false,
+            error: "Invalid job ID",
+        });
+        return;
+    }
 
     const job = await Job.findById(jobId);
 
@@ -187,7 +198,6 @@ export const getJobDetails = async (req: AuthenticatedRequest, res: Response) =>
     // Count applications for the given job
     const applicationCount = await Application.countDocuments({ jobId });
 
-    res.status(200).json({ success: true, job, applicationCount });
 };
 
 export const updateJob = async (req: AuthenticatedRequest, res: Response) => {
@@ -280,13 +290,13 @@ export const deleteJob = async (req: AuthenticatedRequest, res: Response) => {
         return;
     }
 
-    // Delete all applications associated with the job
+    // Delete all applications & saved posts associated with the job
     await Application.deleteMany({ jobId });
+    await SavedJob.deleteMany({ jobId });
 
     res.status(200).json({
         success: true,
-        message: SUCCESS_STRINGS.JobDeleted,
-        job: deletedJob,
+        message: SUCCESS_STRINGS.JobDeleted
     });
 }
 
@@ -342,8 +352,9 @@ export const bulkDelete = async (req: AuthenticatedRequest, res: Response) => {
         postedBy: new ObjectId(employerId),
     });
 
-    // Delete applications associated with the deleted jobs
+    // Delete applications & saved posts associated with the deleted jobs
     await Application.deleteMany({ jobId: { $in: objectIds } });
+    await SavedJob.deleteMany({ jobId: { $in: objectIds } });
 
     res.status(200).json({
         success: true,

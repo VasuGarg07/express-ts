@@ -25,7 +25,10 @@ export const ERROR_STRINGS = {
     EmployerExists: "Employer already exists.",
     JobNotFound: "Job for corresponding Id does not exist.",
     JobNotOwned: "Unauthorized access: You are not the owner of this job",
-    ApplicationNotFound: "Application for this job is not found"
+    ApplicationNotFound: "Application for this job is not found",
+    CompanyNotFound: "Company Details not found",
+    ApplicationExists: "You have already applied for this job.",
+    NoJobsForApplications: "No jobs found for the given applications",
 };
 
 export const SUCCESS_STRINGS = {
@@ -55,5 +58,7 @@ export const SUCCESS_STRINGS = {
     JobPosted: "Job posted successfully",
     JobUpdated: "Job updated successfully",
     JobDeleted: "Job deleted successfully",
-    ApplicationUpdated: "Job Application Updated"
+    ApplicationUpdated: "Job Application Updated",
+    ApplicationSubmitted: "Application submitted successfully.",
+    NoApplications: "No applications found for the applicant.",
 };
