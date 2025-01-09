@@ -6,6 +6,7 @@ import { validate } from "../middlewares/validationMiddleware";
 import { asyncHandler } from "../utils/utilities";
 import { applicantPreferenceSchema, applicantSchema, employerSchema, jobSchema, jobUpdateSchema, updateApplicationStatusSchema } from "../validators/jobscapeValidators";
 import { archiveJob, bulkArchive, bulkDelete, deleteJob, getAllJobsByEmployer, getDashboardAnalytics, getJobApplications, getJobDetails, postJob, updateJob, updateJobApplication } from "../controllers/jobs.employerController";
+import { applyJob, getAllJobs, getJobBriefing, getCompanyDetails, getAppliedJobs, getApplicationStatus } from "../controllers/jobs.applicantController";
 
 
 // User Profile
@@ -43,14 +44,18 @@ employerRouter.post('/applications/status', validate(updateApplicationStatusSche
 const applicantRouter = Router();
 
 // Job Management
-applicantRouter.get('/jobs'); // All Jobs Listed
-applicantRouter.get('/jobs/:jobId'); // Get details of Single Job
-applicantRouter.post('/jobs/:jobId/apply'); // Apply for Job
+applicantRouter.get('/jobs', asyncHandler(getAllJobs));
+applicantRouter.get('/jobs/:jobId', asyncHandler(getJobBriefing));
 applicantRouter.get('/jobs/:jobId/status'); // Check status of Job
 
+// Company Details
+applicantRouter.get('/company/:companyId', asyncHandler(getCompanyDetails));
+
+
 // Application Management
-applicantRouter.get('/applications/:applicantId') // Get All Applied Jobs
-applicantRouter.get('/applications/:id/status') // Get status of job applied by ApplicationId
+applicantRouter.post('/jobs/apply', asyncHandler(applyJob));
+applicantRouter.get('/applications', asyncHandler(getAppliedJobs));
+applicantRouter.get('/applications/status/:applicationId', asyncHandler(getApplicationStatus));
 
 // Saved Jobs
 applicantRouter.post('/jobs/:jobId/save'); // Get details of Single Job

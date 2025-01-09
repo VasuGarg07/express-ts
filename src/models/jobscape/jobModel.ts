@@ -18,6 +18,7 @@ export interface IJob extends Document, Partial<IJobDetails> {
     salaryRange: string;
     employmentType: "full-time" | "part-time" | "contractual" | "freelance" | "internship";
     shiftType: 'day' | 'night' | 'flexible';
+    vacancies: number;
 
     applicationDeadline?: number; // in seconds
     isArchived?: boolean;
@@ -43,6 +44,7 @@ const jobSchema = new Schema<IJob>(
             enum: ["day", "night", "flexible"],
             required: true,
         },
+        vacancies: { type: Number, default: 1 },
 
         description: { type: String },
         responsibilities: { type: [String] },

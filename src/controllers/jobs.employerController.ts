@@ -134,6 +134,7 @@ export const postJob = async (req: AuthenticatedRequest, res: Response) => {
         salaryRange,
         employmentType,
         shiftType,
+        vacancies,
         description,
         responsibilities,
         requirements,
@@ -151,6 +152,7 @@ export const postJob = async (req: AuthenticatedRequest, res: Response) => {
         salaryRange,
         employmentType,
         shiftType,
+        vacancies,
         description,
         responsibilities,
         requirements,
@@ -165,6 +167,14 @@ export const postJob = async (req: AuthenticatedRequest, res: Response) => {
 export const getJobDetails = async (req: AuthenticatedRequest, res: Response) => {
     const { jobId } = req.params;
     const { profileId } = req;
+
+    if (!jobId || !ObjectId.isValid(jobId)) {
+        res.status(400).json({
+            success: false,
+            error: "Invalid job ID",
+        });
+        return;
+    }
 
     const job = await Job.findById(jobId);
 
@@ -187,7 +197,6 @@ export const getJobDetails = async (req: AuthenticatedRequest, res: Response) =>
     // Count applications for the given job
     const applicationCount = await Application.countDocuments({ jobId });
 
-    res.status(200).json({ success: true, job, applicationCount });
 };
 
 export const updateJob = async (req: AuthenticatedRequest, res: Response) => {
