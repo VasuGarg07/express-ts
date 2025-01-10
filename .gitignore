@@ -130,4 +130,5 @@ dist
 .pnp.*
 
 # Personal Content
-project-plans/
+project_plans/
+postman_collections/

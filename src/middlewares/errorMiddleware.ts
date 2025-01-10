@@ -8,5 +8,8 @@ export const errorHandler = (
     next: NextFunction
 ) => {
     console.error('Error:', err.message);
-    res.status(500).json({ error: err.message || ERROR_STRINGS.ServerError });
+    res.status(500).json({
+        success: false,
+        error: err.message || ERROR_STRINGS.ServerError
+    });
 };

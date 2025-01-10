@@ -1,4 +1,6 @@
 import { compare, hash } from 'bcrypt';
+import { Request, Response, NextFunction } from "express";
+import { AuthenticatedRequest } from '../types';
 
 interface PaginationQuery {
     page?: string;
@@ -24,4 +26,26 @@ export const getPaginationParams = (query: PaginationQuery) => {
     const skip = (page - 1) * limit;
 
     return { page, limit, skip };
+};
+
+export const handleDocTransform = <T>(doc: T, ret: any): T => {
+    ret.id = ret._id;
+    ret.createdAt = ret.createdAt.getTime();
+    ret.updatedAt = ret.updatedAt.getTime();
+    delete ret._id;
+    delete ret.__v;
+    return ret;
+}
+
+
+export const asyncHandler = (
+    handler: (req: Request | AuthenticatedRequest, res: Response, next: NextFunction) => Promise<void>
+) => {
+    return async (req: Request | AuthenticatedRequest, res: Response, next: NextFunction) => {
+        try {
+            await handler(req, res, next);
+        } catch (error) {
+            next(error);
+        }
+    };
 };

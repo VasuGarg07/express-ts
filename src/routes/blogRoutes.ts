@@ -11,12 +11,11 @@ router.get('/list/me', getUserBlogs); // all blogs of logged in user
 router.get('/list/author/:name', getBlogsOfAuthor); // all blogs of an author
 router.get('/blog/:id', getBlogById); // all blogs of an author
 router.get('/related/:id', getRelatedBlogs);
-
 router.post('/publish', validate(BlogValidator), addBlog); // publish new blog
+
 // (user must be author)
 router.patch('/update/:id', validate(BlogPatchValidator), updateBlog); // update blog by id
 router.patch('/archive/:id', archiveBlog) // archive blog by id
-
 router.delete('/clear-all', deleteAllBlogs); // delete all blogs
 router.delete('/clear-archived', deleteArchivedBlogs); // delete archived blog
 router.delete('/clear/:id', deleteBlogById);
