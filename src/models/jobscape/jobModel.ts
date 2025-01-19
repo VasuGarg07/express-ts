@@ -2,14 +2,14 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 import { handleDocTransform } from "../../utils/utilities";
 
 export interface IJobDetails {
-    tags: string[];
     description: string;
-    responsibilities: string[];
-    requirements: string[];
-    benefits: string[];
+    requirements: string;
+    responsibilities?: string;
+    benefits?: string;
+    tags?: string[];
 }
 
-export interface IJob extends Partial<IJobDetails>, Document {
+export interface IJob extends IJobDetails, Document {
     postedBy: Types.ObjectId;
     title: string;
     location: string;
@@ -22,7 +22,6 @@ export interface IJob extends Partial<IJobDetails>, Document {
     shiftType: 'day' | 'night' | 'flexible';
     vacancies: number;
 
-    applicationDeadline?: number; // in seconds
     isFeatured?: boolean;
     isArchived?: boolean;
 }
@@ -39,11 +38,11 @@ const jobSchema = new Schema<IJob>(
             required: true
         },
 
+        description: { type: String, required: true },
+        requirements: { type: String, required: true },
+        responsibilities: { type: String },
+        benefits: { type: String },
         tags: { type: [String] },
-        description: { type: String },
-        responsibilities: { type: [String] },
-        requirements: { type: [String] },
-        benefits: { type: [String] },
 
         skillsRequired: { type: [String], required: true },
         experienceRequired: { type: String, required: true },
@@ -60,7 +59,6 @@ const jobSchema = new Schema<IJob>(
         },
         vacancies: { type: Number, default: 1 },
 
-        applicationDeadline: { type: Number },
         isArchived: { type: Boolean, default: false },
         isFeatured: { type: Boolean, default: false },
     },

@@ -1,10 +1,10 @@
 import { Response } from 'express';
 import { ObjectId } from 'mongodb';
-import { Application } from '../models/jobscape/applicationModel';
-import { Job } from '../models/jobscape/jobModel';
-import { AuthenticatedRequest } from '../types';
-import { ERROR_STRINGS, SUCCESS_STRINGS } from '../utils/response.string';
-import { SavedJob } from '../models/jobscape/savedJobs';
+import { Application } from '../../models/jobscape/applicationModel';
+import { Job } from '../../models/jobscape/jobModel';
+import { AuthenticatedRequest } from '../../types';
+import { ERROR_STRINGS, SUCCESS_STRINGS } from '../../utils/response.string';
+import { SavedJob } from '../../models/jobscape/savedJobs';
 
 const getJobSummary = async (employerId: string) => {
     const [summary] = await Job.aggregate([
@@ -22,66 +22,6 @@ const getJobSummary = async (employerId: string) => {
     return summary || { totalJobs: 0, activeJobs: 0, archivedJobs: 0 };
 };
 
-const getApplicationStatusBreakdown = async (employerId: string) => {
-    const stats = await Application.aggregate([
-        {
-            $lookup: {
-                from: "jobs",
-                localField: "jobId",
-                foreignField: "_id",
-                as: "jobDetails"
-            }
-        },
-        { $unwind: "$jobDetails" },
-        { $match: { "jobDetails.postedBy": new ObjectId(employerId) } },
-        {
-            $group: {
-                _id: "$status",
-                count: { $sum: 1 }
-            }
-        }
-    ]);
-
-    return stats || [];
-};
-
-const getJobPerformance = async (employerId: string) => {
-    const jobs = await Application.aggregate([
-        {
-            $lookup: {
-                from: "jobs",
-                localField: "jobId",
-                foreignField: "_id",
-                as: "jobDetails"
-            }
-        },
-        { $unwind: "$jobDetails" },
-        { $match: { "jobDetails.postedBy": new ObjectId(employerId) } },
-        {
-            $group: {
-                _id: "$jobId",
-                applications: { $sum: 1 },
-                jobDetails: { $first: "$jobDetails" }
-            }
-        },
-        {
-            $project: {
-                jobId: "$_id",
-                title: "$jobDetails.title",
-                applicationDeadline: "$jobDetails.applicationDeadline",
-                applications: 1
-            }
-        },
-        { $sort: { applications: 1 } } // Sort ascending for least and most
-    ]);
-
-    return {
-        leastApplicantJob: jobs[0] || null,
-        mostApplicantJob: jobs.length > 1 ? jobs[jobs.length - 1] : null
-    };
-};
-
-
 export const getDashboardAnalytics = async (req: AuthenticatedRequest, res: Response) => {
     const { profileId } = req;
 
@@ -90,21 +30,14 @@ export const getDashboardAnalytics = async (req: AuthenticatedRequest, res: Resp
         return;
     }
 
-    // Fetch analytics
-    const [jobSummary, applicationStats, jobPerformance] = await Promise.all([
-        getJobSummary(profileId),
-        getApplicationStatusBreakdown(profileId),
-        getJobPerformance(profileId)
-    ]);
+    const jobSummary = await getJobSummary(profileId);
+    const recentJobs = await Job.find({ postedBy: profileId }).sort({ createdAt: -1 }).limit(6)
 
     // Construct response
     res.status(200).json({
         success: true,
-        data: {
-            jobSummary,
-            applicationStats,
-            jobPerformance
-        }
+        jobSummary,
+        recentJobs
     });
 };
 

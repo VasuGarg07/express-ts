@@ -87,12 +87,11 @@ export const jobSchema = z.object({
     vacancies: z.number().positive("Vacancies must be greater than zero"),
 
     // secondary attributes
+    description: z.string().min(1, "Description is required"),
+    requirements: z.string().min(1, "Requirements is required"),
+    responsibilities: z.string().optional(),
+    benefits: z.string().optional(),
     tags: z.array(z.string()).optional(),
-    description: z.string().optional(),
-    responsibilities: z.array(z.string()).optional(),
-    requirements: z.array(z.string()).optional(),
-    benefits: z.array(z.string()).optional(),
-    applicationDeadline: z.number().int().positive("Deadline must be a valid Unix timestamp"),
 
     // used for soft delete
     isArchived: z.boolean().optional(),

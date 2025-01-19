@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { deleteAccount, getProfile, registerApplicant, registerEmployer, updateProfile } from "../controllers/jobs.profileController";
+import { applyJob, deleteSavedJob, getAppliedJobs, getCompaniesList, getCompanyDetails, getJobBriefing, getJobsList, getRecommendedJobs, getSavedJobs, saveJob } from "../controllers/jobscape/jobs.applicantController";
+import { archiveJob, bulkArchive, bulkDelete, deleteJob, getAllJobsByEmployer, getDashboardAnalytics, getJobApplications, getJobDetails, postJob, updateJob, updateJobApplication } from "../controllers/jobscape/jobs.employerController";
+import { deleteAccount, getProfile, registerApplicant, registerEmployer, updateProfile } from "../controllers/jobscape/jobs.profileController";
 import { jobRoleBasedValidation } from "../middlewares/jobRoleBasedValidation";
 import { isAuthorized } from "../middlewares/roleMiddleware";
 import { validate } from "../middlewares/validationMiddleware";
 import { asyncHandler } from "../utils/utilities";
-import { applicantPreferenceSchema, applicantSchema, employerSchema, jobSchema, jobUpdateSchema, updateApplicationStatusSchema } from "../validators/jobscapeValidators";
-import { archiveJob, bulkArchive, bulkDelete, deleteJob, getAllJobsByEmployer, getDashboardAnalytics, getJobApplications, getJobDetails, postJob, updateJob, updateJobApplication } from "../controllers/jobs.employerController";
-import { applyJob, getAllJobs, getJobBriefing, getCompanyDetails, getAppliedJobs, getApplicationStatus, saveJob, getSavedJobs, deleteSavedJob, updateApplicantPreference, getRecommendedJobs, getApplicantDashboardAnalytics } from "../controllers/jobs.applicantController";
+import { applicantSchema, employerSchema, jobSchema, jobUpdateSchema, updateApplicationStatusSchema } from "../validators/jobscapeValidators";
 
 
 // User Profile
@@ -15,13 +15,13 @@ profileRouter.get('/profile', asyncHandler(getProfile));
 profileRouter.post('/register/applicant', validate(applicantSchema), asyncHandler(registerApplicant));
 profileRouter.post('/register/employer', validate(employerSchema), asyncHandler(registerEmployer));
 profileRouter.patch('/profile/update', jobRoleBasedValidation, asyncHandler(updateProfile));
-profileRouter.delete('/account/:accountId', asyncHandler(deleteAccount)); // TODO: To be tested
+profileRouter.delete('/account/:accountId', asyncHandler(deleteAccount));
 
 // Employer Dashboard
 const employerRouter = Router();
 
 // Job Listing & Analytics
-employerRouter.get('/dashboard', asyncHandler(getDashboardAnalytics)); // TODO: Test again after applicant implementation
+employerRouter.get('/dashboard', asyncHandler(getDashboardAnalytics));
 employerRouter.get('/jobs', asyncHandler(getAllJobsByEmployer));
 
 // Individual Job Management
@@ -44,17 +44,17 @@ employerRouter.post('/applications/status', validate(updateApplicationStatusSche
 const applicantRouter = Router();
 
 // Job Management
-applicantRouter.get('/jobs', asyncHandler(getAllJobs));
+applicantRouter.get('/jobs', asyncHandler(getJobsList));
 applicantRouter.get('/jobs/:jobId', asyncHandler(getJobBriefing));
 
 // Company Details
-applicantRouter.get('/company/:companyId', asyncHandler(getCompanyDetails));
+applicantRouter.get('/companies', asyncHandler(getCompaniesList));
+applicantRouter.get('/companies/:companyId', asyncHandler(getCompanyDetails));
 
 
 // Application Management
 applicantRouter.post('/jobs/apply', asyncHandler(applyJob));
 applicantRouter.get('/applications', asyncHandler(getAppliedJobs));
-applicantRouter.get('/applications/status/:applicationId', asyncHandler(getApplicationStatus));
 
 // Saved Jobs
 applicantRouter.post('/jobs/save', asyncHandler(saveJob));
@@ -63,8 +63,6 @@ applicantRouter.delete('/saved-jobs/:jobId', asyncHandler(deleteSavedJob));
 
 // Job Listing & Analytics
 applicantRouter.get('/recommended', asyncHandler(getRecommendedJobs));
-applicantRouter.get('/dashboard', asyncHandler(getApplicantDashboardAnalytics));
-applicantRouter.patch('/preferences', validate(applicantPreferenceSchema), asyncHandler(updateApplicantPreference));
 
 
 // Main Router

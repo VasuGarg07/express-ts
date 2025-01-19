@@ -1,12 +1,12 @@
 import { NextFunction, Response } from 'express';
-import { Applicant } from '../models/jobscape/applicantModel';
-import { Application } from '../models/jobscape/applicationModel';
-import { Employer } from '../models/jobscape/employerModel';
-import { Job } from '../models/jobscape/jobModel';
-import { SavedJob } from '../models/jobscape/savedJobs';
-import { AuthenticatedRequest } from '../types';
-import { JobRoles } from '../utils/constants';
-import { ERROR_STRINGS, SUCCESS_STRINGS } from '../utils/response.string';
+import { Applicant } from '../../models/jobscape/applicantModel';
+import { Application } from '../../models/jobscape/applicationModel';
+import { Employer } from '../../models/jobscape/employerModel';
+import { Job } from '../../models/jobscape/jobModel';
+import { SavedJob } from '../../models/jobscape/savedJobs';
+import { AuthenticatedRequest } from '../../types';
+import { JobRoles } from '../../utils/constants';
+import { ERROR_STRINGS, SUCCESS_STRINGS } from '../../utils/response.string';
 
 export const getProfile = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const userId = req.user!.id;
@@ -107,6 +107,7 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response, ne
         }
 
         res.status(200).json({
+            success: true,
             message: SUCCESS_STRINGS.ProfileUpdated,
             profile: updatedEmployer
         });
@@ -128,45 +129,47 @@ export const deleteAccount = async (req: AuthenticatedRequest, res: Response, ne
         return;
     }
 
-    if (role === JobRoles.applicant) {
-        // Delete applicant profile
-        const deletedApplicant = await Applicant.findByIdAndDelete(accountId);
-        if (!deletedApplicant) {
-            res.status(404).json({ error: ERROR_STRINGS.ProfileNotFound });
+    switch (role) {
+        case JobRoles.applicant:
+            const deletedApplicant = await Applicant.findByIdAndDelete(accountId);
+            if (!deletedApplicant) {
+                res.status(404).json({ error: ERROR_STRINGS.ProfileNotFound });
+                return;
+            }
+
+            // Delete associated data
+            await SavedJob.deleteMany({ applicantId: accountId });
+            await Application.deleteMany({ applicantId: accountId });
+
+            res.status(200).json({
+                message: SUCCESS_STRINGS.ApplicantDeleted,
+                account: deletedApplicant,
+            });
             return;
-        }
 
-        // Delete associated data
-        await SavedJob.deleteMany({ applicantId: accountId });
-        await Application.deleteMany({ applicantId: accountId });
+        case JobRoles.employer:
+            const deletedEmployer = await Employer.findByIdAndDelete(accountId);
+            if (!deletedEmployer) {
+                res.status(404).json({ error: ERROR_STRINGS.ProfileNotFound });
+                return;
+            }
 
-        res.status(200).json({
-            message: SUCCESS_STRINGS.ApplicantDeleted,
-            account: deletedApplicant,
-        });
-        return;
-    }
+            // Find jobs posted by the employer
+            const employerJobs = await Job.find({ postedBy: accountId });
+            const jobIds = employerJobs.map(job => job._id);
 
-    if (role === JobRoles.employer) {
-        // Delete employer profile
-        const deletedEmployer = await Employer.findByIdAndDelete(accountId);
-        if (!deletedEmployer) {
-            res.status(404).json({ error: ERROR_STRINGS.ProfileNotFound });
+            // Delete jobs and their associated applications
+            await Job.deleteMany({ postedBy: accountId });
+            await Application.deleteMany({ jobId: { $in: jobIds } });
+
+            res.status(200).json({
+                message: SUCCESS_STRINGS.EmployerDeleted,
+                account: deletedEmployer,
+            });
             return;
-        }
 
-        // Find jobs posted by the employer
-        const employerJobs = await Job.find({ postedBy: accountId });
-        const jobIds = employerJobs.map(job => job._id);
-
-        // Delete jobs and their associated applications
-        await Job.deleteMany({ postedBy: accountId });
-        await Application.deleteMany({ jobId: { $in: jobIds } });
-
-        res.status(200).json({
-            message: SUCCESS_STRINGS.EmployerDeleted,
-            account: deletedEmployer,
-        });
-        return;
+        default:
+            res.status(404).json({ error: "Invalid Role" });
+            return;
     }
 }
