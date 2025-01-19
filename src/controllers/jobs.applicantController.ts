@@ -7,17 +7,72 @@ import { ERROR_STRINGS, SUCCESS_STRINGS } from '../utils/response.string';
 import { SavedJob } from '../models/jobscape/savedJobs';
 import { Applicant, IPreference } from '../models/jobscape/applicantModel';
 import { Application } from '../models/jobscape/applicationModel';
+import mongoose from 'mongoose';
 
-export const getAllJobs = async (req: Request, res: Response) => {
-    const jobs = await Job.find(
-        { isArchived: false }, // Filter out archived jobs
-        { isArchived: 0 } // can show when this application will close
-    )
+export const getJobsList = async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+    const searchQuery = req.query.name ? (req.query.name as string) : "";
+
+    const matchStage: any = { isArchived: false };
+
+    // If search query is provided, add regex filtering
+    if (searchQuery) {
+        matchStage.title = { $regex: searchQuery, $options: "i" }; // Case-insensitive substring search
+    }
+
+    const jobs = await Job.aggregate([
+        {
+            $match: matchStage
+        },
+        {
+            $lookup: {
+                from: "employers",
+                localField: "postedBy",
+                foreignField: "_id",
+                as: "employerDetails"
+            }
+        },
+        {
+            $lookup: {
+                from: "applications",
+                localField: "_id",
+                foreignField: "jobId",
+                as: "applications"
+            }
+        },
+        {
+            $addFields: {
+                companyName: { $arrayElemAt: ["$employerDetails.companyName", 0] },
+                logoURL: { $arrayElemAt: ["$employerDetails.logoURL", 0] },
+                totalApplicants: { $size: "$applications" }
+            }
+        },
+        {
+            $project: {
+                id: "$_id", // Rename _id to id
+                title: 1,
+                location: 1,
+                employmentType: 1,
+                salaryRange: 1,
+                isFeatured: 1,
+                totalApplicants: 1,
+                companyName: 1,
+                logoURL: 1,
+                _id: 0,
+            }
+        },
+        { $skip: skip }, // Implement pagination
+        { $limit: limit } // Limit results per page
+    ]);
 
     res.status(200).json({
         success: true,
         jobs,
         count: jobs.length,
+        page,
+        limit
     });
 }
 
@@ -32,17 +87,134 @@ export const getJobBriefing = async (req: Request, res: Response) => {
         return;
     }
 
-    const job = await Job.findById(jobId, { isArchived: 0 });
+    const jobBriefing = await Job.aggregate([
+        { $match: { _id: new ObjectId(jobId), isArchived: { $ne: true } } },
 
-    if (!job) {
-        res.status(404).json({ error: ERROR_STRINGS.JobNotFound })
+        // Lookup and count applications
+        {
+            $lookup: {
+                from: "applications",
+                localField: "_id",
+                foreignField: "jobId",
+                as: "applications",
+            },
+        },
+        { $addFields: { applicationCount: { $size: "$applications" } } },
+        { $project: { applications: 0 } }, // Remove applications array after counting
+
+        // Lookup employer details
+        {
+            $lookup: {
+                from: "employers",
+                localField: "postedBy",
+                foreignField: "_id",
+                as: "employer",
+            },
+        },
+        { $unwind: { path: "$employer", preserveNullAndEmptyArrays: true } },
+
+        // Preserve full Job document dynamically & separate extra fields
+        {
+            $project: {
+                job: {
+                    $mergeObjects: [
+                        "$$ROOT", // Include all Job fields dynamically
+                        {
+                            id: "$_id", // Convert _id to id
+                            createdAt: { $toLong: "$createdAt" }, // Convert to timestamp
+                            updatedAt: { $toLong: "$updatedAt" }, // Convert to timestamp
+                        },
+                    ],
+                },
+                applicationCount: 1,
+                companyName: "$employer.companyName",
+                logoURL: "$employer.logoURL",
+            },
+        },
+        {
+            $project: {
+                "job._id": 0,
+                "job.__v": 0,
+            },
+        },
+    ]);
+
+    if (!jobBriefing.length) {
+        res.status(404).json({ success: false, error: ERROR_STRINGS.JobNotFound });
         return;
     }
 
-    // Count applications for the given job
-    const applicationCount = await Application.countDocuments({ jobId });
+    res.status(200).json({
+        success: true,
+        ...jobBriefing[0], // Includes job object + extra fields
+    });
+}
 
-    res.status(200).json({ success: true, job, applicationCount });
+export const getCompaniesList = async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+    const nameFilter = req.query.name as string;
+
+    // Building the match filter dynamically
+    const matchFilter: any = {};
+
+    // If a name filter is provided, apply the substring search for companyName
+    if (nameFilter) {
+        matchFilter.companyName = { $regex: nameFilter, $options: "i" }; // 'i' for case-insensitive match
+    }
+
+
+    const companies = await Employer.aggregate([
+        {
+            $match: matchFilter
+        },
+        {
+            $lookup: {
+                from: "jobs",
+                let: { employerId: "$_id" },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $and: [
+                                    { $eq: ["$postedBy", "$$employerId"] },
+                                    { $eq: ["$isArchived", false] } // Corrected to match the field name
+                                ]
+                            }
+                        }
+                    },
+                    { $project: { _id: 1 } }
+                ],
+                as: "jobs"
+            }
+        },
+        {
+            $addFields: {
+                activeJobsCount: { $size: "$jobs" }
+            }
+        },
+        {
+            $project: {
+                id: "$_id", // Rename _id to id
+                companyName: 1,
+                logoURL: 1,
+                address: 1,
+                activeJobsCount: 1,
+                _id: 0,
+            }
+        },
+        { $skip: skip },
+        { $limit: limit }
+    ]);
+
+    res.status(200).json({
+        success: true,
+        companies,
+        count: companies.length,
+        page,
+        limit
+    });
 }
 
 export const getCompanyDetails = async (req: Request, res: Response) => {
@@ -63,7 +235,45 @@ export const getCompanyDetails = async (req: Request, res: Response) => {
         return;
     }
 
-    res.status(200).json({ success: true, company });
+    const jobs = await Job.aggregate([
+        {
+            $match: {
+                postedBy: new mongoose.Types.ObjectId(companyId),
+                isArchived: false
+            }
+        },
+        {
+            $lookup: {
+                from: "applications",
+                localField: "_id",
+                foreignField: "jobId",
+                as: "applications"
+            }
+        },
+        {
+            $addFields: {
+                totalApplicants: { $size: "$applications" }
+            }
+        },
+        {
+            $project: {
+                id: "$_id",
+                title: 1,
+                location: 1,
+                employmentType: 1,
+                salaryRange: 1,
+                isFeatured: 1,
+                totalApplicants: 1,
+                companyName: company.companyName,
+                logoURL: company.logoURL,
+                _id: 0
+            }
+        }
+    ]);
+
+    res.status(200).json({
+        success: true, company, jobs, jobCount: jobs.length
+    });
 }
 
 export const applyJob = async (req: AuthenticatedRequest, res: Response) => {
@@ -74,6 +284,11 @@ export const applyJob = async (req: AuthenticatedRequest, res: Response) => {
     if (!jobId) {
         res.status(400).json({ error: 'Job ID are required.' });
         return;
+    }
+
+    const hasApplied = await Application.findOne({ jobId, applicantId });
+    if (hasApplied) {
+        res.status(400).json({ error: ERROR_STRINGS.ApplicationExists })
     }
 
     // Check if the job exists
@@ -100,44 +315,76 @@ export const applyJob = async (req: AuthenticatedRequest, res: Response) => {
 export const getAppliedJobs = async (req: AuthenticatedRequest, res: Response) => {
     const { profileId: applicantId } = req;
 
-    // Find all applications for the given applicant
-    const applications = await Application.find({ applicantId }).select('jobId');
+    const jobs = await Job.aggregate([
+        // Lookup applications to get the application status
+        {
+            $lookup: {
+                from: "applications",
+                let: { jobId: "$_id" },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $and: [
+                                    { $eq: ["$jobId", "$$jobId"] },
+                                    { $eq: ["$applicantId", new mongoose.Types.ObjectId(applicantId)] }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        $project: {
+                            _id: 0,
+                            status: 1
+                        }
+                    }
+                ],
+                as: "applications"
+            }
+        },
+        // Lookup employer details to get companyName and logoURL
+        {
+            $lookup: {
+                from: "employers",
+                localField: "postedBy",
+                foreignField: "_id",
+                as: "employerDetails"
+            }
+        },
+        {
+            $match: { isArchived: false }
+        },
+        // Extract relevant fields from lookup results
+        {
+            $addFields: {
+                status: { $arrayElemAt: ["$applications.status", 0] },
+                companyName: { $arrayElemAt: ["$employerDetails.companyName", 0] },
+                logoURL: { $arrayElemAt: ["$employerDetails.logoURL", 0] }
+            }
+        },
+        // Project only required fields
+        {
+            $project: {
+                id: "$_id",
+                title: 1,
+                location: 1,
+                employmentType: 1,
+                salaryRange: 1,
+                isFeatured: 1,
+                companyName: 1,
+                logoURL: 1,
+                status: 1,
+                _id: 0
+            }
+        }
+    ]);
 
-    if (applications.length === 0) {
+    if (jobs.length === 0) {
         res.status(200).json({ success: true, message: SUCCESS_STRINGS.NoApplications });
         return;
     }
 
-    const jobIds = applications.map(app => app.jobId);
-    const jobs = await Job.find({ _id: { $in: jobIds }, isArchived: false });
-
-    if (jobs.length === 0) {
-        res.status(404).json({ error: ERROR_STRINGS.NoJobsForApplications });
-        return;
-    }
-
-    res.status(200).json({ jobs, count: jobs.length });
-}
-
-export const getApplicationStatus = async (req: Request, res: Response) => {
-    const { applicationId } = req.params;
-
-    if (!applicationId || !ObjectId.isValid(applicationId)) {
-        res.status(400).json({
-            success: false,
-            error: "Invalid application ID",
-        });
-        return;
-    }
-
-    const application = await Application.findById(applicationId);
-
-    if (!application) {
-        res.status(404).json({ error: ERROR_STRINGS.ApplicationNotFound })
-        return;
-    }
-
-    res.status(200).json({ success: true, status: application.status })
+    res.status(200).json({ jobs, count: jobs.length, success: false });
 }
 
 export const saveJob = async (req: AuthenticatedRequest, res: Response) => {
@@ -184,7 +431,7 @@ export const getSavedJobs = async (req: AuthenticatedRequest, res: Response) => 
     const jobIds = savedJobs.map(app => app.jobId);
     const jobs = await Job.find({ _id: { $in: jobIds }, isArchived: false });
 
-    res.status(200).json({ jobs, count: jobs.length });
+    res.status(200).json({ success: true, jobs, count: jobs.length });
 }
 
 export const deleteSavedJob = async (req: Request, res: Response) => {
@@ -197,7 +444,7 @@ export const deleteSavedJob = async (req: Request, res: Response) => {
         return;
     }
 
-    const deleteSaved = await SavedJob.findById(jobId);
+    const deleteSaved = await SavedJob.findOneAndDelete({ jobId });
 
     if (!deleteSaved) {
         res.status(404).json({
@@ -213,103 +460,91 @@ export const deleteSavedJob = async (req: Request, res: Response) => {
     });
 }
 
-export const updateApplicantPreference = async (req: AuthenticatedRequest, res: Response) => {
-    const applicantId = req.profileId;
-    const preferenceData = req.body;
-
-    // Check if the applicant exists
-    const applicant = await Applicant.findById(applicantId);
-    if (!applicant) {
-        res.status(404).json({ error: ERROR_STRINGS.NoApplicant });
-        return;
-    }
-
-    // Update the applicant's preference
-    applicant.preference = preferenceData;
-    await applicant.save();
-
-    res.status(200).json({ message: 'Preferences updated successfully.', applicant });
-};
-
 export const getRecommendedJobs = async (req: AuthenticatedRequest, res: Response) => {
     const applicantId = req.profileId;
 
-    // Fetch applicant and their preferences
+    // Fetch applicant preferences
     const applicant = await Applicant.findById(applicantId);
     if (!applicant) {
         res.status(404).json({ error: ERROR_STRINGS.NoApplicant });
         return;
     }
 
-    const preference: IPreference = applicant.preference;
+    const preference = applicant.preference;
 
-    // Fetch all active jobs (not archived)
-    const allJobs = await Job.find({ isArchived: false });
+    const jobs = await Job.aggregate([
+        { $match: { isArchived: false } },
 
-    // Calculate match score for each job
-    const scoredJobs = allJobs.map(job => {
-        let score = 0;
+        // Lookup employer details
+        {
+            $lookup: {
+                from: "employers",
+                localField: "postedBy",
+                foreignField: "_id",
+                as: "employerDetails"
+            }
+        },
 
-        // Salary Range Match (40%)
-        const jobSalary = parseInt(job.salaryRange.split('-')[0]); // Assuming salaryRange is '50000-70000'
-        if (jobSalary >= preference.expectedSalary) score += 45;
-        // Job Type Match (20%)
-        if (job.employmentType === preference.jobType) score += 20;
-        // Location Match (10%)
-        if (preference.locations.includes(job.location)) score += 10;
-        // Shift Match (20%)
-        if (preference.shift && job.shiftType === preference.shift) score += 20;
-        // Role Match (10%)
-        if (preference.role && preference.role.some(role => job.title.toLowerCase().includes(role.toLowerCase()))) {
-            score += 10;
-        }
+        // Calculate match score (excluding salary & applications)
+        {
+            $addFields: {
+                jobTypeMatch: { $cond: { if: { $eq: ["$employmentType", preference.jobType] }, then: 30, else: 0 } },
+                locationMatch: { $cond: { if: { $in: ["$location", preference.locations] }, then: 30, else: 0 } },
+                shiftMatch: { $cond: { if: { $eq: ["$shiftType", preference.shift] }, then: 30, else: 0 } },
+                roleMatch: {
+                    $cond: {
+                        if: {
+                            $gt: [{ $size: { $filter: { input: preference.role, as: "role", cond: { $regexMatch: { input: "$title", regex: "$$role", options: "i" } } } } }, 0]
+                        },
+                        then: 10, else: 0
+                    }
+                },
+                companyName: { $arrayElemAt: ["$employerDetails.companyName", 0] },
+                logoURL: { $arrayElemAt: ["$employerDetails.logoURL", 0] }
+            }
+        },
 
-        return { job, score };
-    });
+        // Calculate total match score
+        {
+            $addFields: {
+                matchScore: {
+                    $add: [
+                        "$jobTypeMatch",
+                        "$locationMatch",
+                        "$shiftMatch",
+                        "$roleMatch"
+                    ]
+                }
+            }
+        },
 
-    const recommendedJobs = scoredJobs
-        .filter(item => item.score >= 30)
-        .sort((a, b) => b.score - a.score)
-        .map(item => ({
-            ...item.job.toObject(),  // Convert Mongoose document to plain object
-            matchScore: item.score   // Include the match score
-        }));
+        // Filter jobs with matchScore >= 30
+        { $match: { matchScore: { $gte: 30 } } },
 
+        // Format output
+        {
+            $project: {
+                id: "$_id",
+                title: 1,
+                location: 1,
+                employmentType: 1,
+                salaryRange: 1,
+                isFeatured: 1,
+                companyName: 1,
+                logoURL: 1,
+                matchScore: 1,
+                _id: 0
+            }
+        },
 
-    if (recommendedJobs.length === 0) {
-        res.status(404).json({ message: 'No recommended jobs found.' });
+        // Sort by best match
+        { $sort: { matchScore: -1 } }
+    ]);
+
+    if (jobs.length === 0) {
+        res.status(404).json({ message: "No recommended jobs found." });
         return;
     }
 
-    res.status(200).json({ jobs: recommendedJobs, count: recommendedJobs.length });
-}
-
-export const getApplicantDashboardAnalytics = async (req: AuthenticatedRequest, res: Response) => {
-    const applicantId = req.profileId;
-
-    // 1. Total Applications
-    const totalApplications = await Application.countDocuments({ applicantId });
-
-    // 2. Application Status Breakdown
-    const statusBreakdown = await Application.aggregate([
-        { $match: { applicantId } },
-        { $group: { _id: "$status", count: { $sum: 1 } } }
-    ]);
-
-    // 3. Total Saved Jobs
-    const totalSavedJobs = await SavedJob.countDocuments({ applicantId });
-
-    // 4. Recent Applications (Last 5)
-    const recentApplications = await Application.find({ applicantId })
-        .sort({ createdAt: -1 })
-        .limit(5)
-        .populate("jobId", "title location salaryRange employmentType");
-
-    // Format the response
-    res.status(200).json({
-        totalApplications,
-        statusBreakdown,
-        totalSavedJobs,
-        recentApplications
-    });
+    res.status(200).json({ jobs, count: jobs.length });
 };
