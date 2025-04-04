@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { compareData, hashData } from '../utils/utilities';
 import User from '../models/userModel';
 import { ERROR_STRINGS, SUCCESS_STRINGS } from '../utils/response.string';
+import { Author } from '../models/notebookModel';
 
 const SECRET_KEY = process.env.JWT_SECRET || 'secretkey';
 
@@ -32,6 +33,15 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
             securityAnswer: hashedSecurityAnswer
         });
         const user = await newUser.save();
+
+        // Create Authors for Archivra
+        await Author.create({
+            userId: user.id,
+            name: user.username,
+            avatar: `https://api.dicebear.com/6.x/initials/svg?seed=${user.username}`
+        });
+
+
         res.status(201).json({ message: SUCCESS_STRINGS.UserCreated, id: user._id })
     } catch (error) {
         next(error);
