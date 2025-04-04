@@ -5,6 +5,7 @@ import fs from 'fs';
 
 import connectDb from './config/db';
 import { initRoutes } from './routes';
+import { syncAuthors } from './controllers/notebook/syncAuthor';
 
 // Load environment variables from `.env.local` if it exists, otherwise `.env`.
 if (fs.existsSync('.env.local')) {

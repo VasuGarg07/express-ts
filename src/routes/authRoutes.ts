@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { changePassword, login, refreshAccessToken, register } from "../controllers/authController";
+import { changePassword, createTestToken, login, refreshAccessToken, register } from "../controllers/authController";
 import { validate } from "../middlewares/validationMiddleware";
 import { changePasswordSchema, loginSchema, registerSchema } from "../validators/authValidator";
 

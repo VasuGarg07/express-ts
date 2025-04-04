@@ -174,7 +174,6 @@ export const addBlog = async (req: AuthenticatedRequest, res: Response, next: Ne
     } catch (error) {
         next(error);
     }
-
 }
 
 export const updateBlog = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
