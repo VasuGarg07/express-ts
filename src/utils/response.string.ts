@@ -30,7 +30,25 @@ export const ERROR_STRINGS = {
     ApplicationExists: "You have already applied for this job.",
     NoJobsForApplications: "No jobs found for the given applications",
     JobAlreadySaved: "Job is already saved.",
-    NoApplicant: "Applicant not found."
+    NoApplicant: "Applicant not found.",
+
+    // form builder
+    InvalidFormId: "Form ID is required and must be valid",
+    FormNotFound: "Form not found",
+    FormNotOwned: "Unauthorized access: You are not the owner of this form",
+    FormInactive: "This form is no longer active",
+    InvalidFormConfig: "Invalid form configuration",
+    InvalidFormResponse: "Invalid form response data",
+    ResponseNotFound: "Form response not found",
+    FormValidationFailed: "Form validation failed",
+    ResponseSubmissionFailed: "Failed to submit form response",
+    MaxFormsReached: "Maximum number of forms reached for this user",
+    InvalidFieldType: "Invalid field type provided",
+    DuplicateKeys: "Duplicate keys found in form structure",
+    FormLimitExceeded: "Form structure exceeds allowed limits",
+    InvalidFormStructure: "Invalid form structure provided",
+    FormExportFailed: "Failed to export form configuration",
+    FormImportFailed: "Failed to import form configuration",
 };
 
 export const SUCCESS_STRINGS = {
@@ -64,4 +82,17 @@ export const SUCCESS_STRINGS = {
     ApplicationSubmitted: "Application submitted successfully.",
     NoApplications: "No applications found for the applicant.",
     JobSaved: 'Job saved successfully.',
+
+    // form builder
+    FormCreated: "Form created successfully",
+    FormUpdated: "Form updated successfully",
+    FormDeleted: "Form deleted successfully",
+    FormSaved: "Form saved successfully",
+    FormActivated: "Form activated successfully",
+    FormDeactivated: "Form deactivated successfully",
+    FormDuplicated: "Form duplicated successfully",
+    ResponseSubmitted: "Form response submitted successfully",
+    ResponseDeleted: "Form response deleted successfully",
+    FormExported: "Form configuration exported successfully",
+    FormImported: "Form configuration imported successfully",
 };
