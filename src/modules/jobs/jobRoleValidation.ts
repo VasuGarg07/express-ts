@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { ZodSchema } from "zod";
-import { applicantUpdateSchema, employerUpdateSchema } from "../validators/jobscapeValidators";
-import { validate } from './validationMiddleware';
-import { ERROR_STRINGS } from "../utils/response.string";
+import { applicantUpdateSchema, employerUpdateSchema } from "./jobscapeValidators";
+import { validate } from '../../middlewares/validationMiddleware';
+import { ERROR_STRINGS } from "../../utils/response.string";
 
 export const jobRoleBasedValidation = (req: Request, res: Response, next: NextFunction) => {
     const role = req.headers["role"] as string;

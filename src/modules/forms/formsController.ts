@@ -1,9 +1,9 @@
 import { NextFunction, Request, Response } from 'express';
 import { Types } from 'mongoose';
-import { Form, FormResponse } from '../models/formlystModel';
-import { AuthenticatedRequest } from '../types';
-import { ERROR_STRINGS, SUCCESS_STRINGS } from '../utils/response.string';
-import { generateShareUrl, handleDocTransform } from '../utils/utilities';
+import { Form, FormResponse } from './formsModel';
+import { AuthenticatedRequest } from '../../types';
+import { ERROR_STRINGS, SUCCESS_STRINGS } from '../../utils/response.string';
+import { generateShareUrl, handleDocTransform } from '../../utils/utilities';
 
 // Constants
 const MAX_FORMS_PER_USER = 25;

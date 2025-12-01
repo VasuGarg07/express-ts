@@ -1,9 +1,9 @@
 import { NextFunction, Request, Response } from 'express';
-import Blog from '../models/blogModel';
-import { AuthenticatedRequest } from '../types';
-import { ERROR_STRINGS, SUCCESS_STRINGS } from '../utils/response.string';
-import { BlogPatchValidator } from '../validators/blogValidator';
-import { getPaginationParams, PaginatedResponse } from '../utils/utilities';
+import Blog from './blogModel';
+import { AuthenticatedRequest } from '../../types';
+import { ERROR_STRINGS, SUCCESS_STRINGS } from '../../utils/response.string';
+import { BlogPatchValidator } from './blogValidator';
+import { getPaginationParams, PaginatedResponse } from '../../utils/utilities';
 
 export const getRecentBlogs = async (req: Request, res: Response, next: NextFunction) => {
     const count = 8;

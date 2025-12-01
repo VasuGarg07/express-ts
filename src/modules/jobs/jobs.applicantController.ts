@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
-import { Employer } from '../../models/jobscape/employerModel';
-import { Job } from '../../models/jobscape/jobModel';
+import { Employer } from './employerModel';
+import { Job } from './jobModel';
 import { AuthenticatedRequest } from '../../types';
 import { ERROR_STRINGS, SUCCESS_STRINGS } from '../../utils/response.string';
-import { SavedJob } from '../../models/jobscape/savedJobs';
-import { Applicant, IPreference } from '../../models/jobscape/applicantModel';
-import { Application } from '../../models/jobscape/applicationModel';
+import { SavedJob } from './savedJobs';
+import { Applicant, IPreference } from './applicantModel';
+import { Application } from './applicationModel';
 import mongoose from 'mongoose';
 
 export const getJobsList = async (req: Request, res: Response) => {

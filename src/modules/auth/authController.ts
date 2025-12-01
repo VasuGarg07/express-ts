@@ -1,10 +1,19 @@
 import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { compareData, hashData } from '../utils/utilities';
-import User from '../models/userModel';
-import { ERROR_STRINGS, SUCCESS_STRINGS } from '../utils/response.string';
+import { compareData, hashData } from '../../utils/utilities';
+import User from './userModel';
+import { ERROR_STRINGS, SUCCESS_STRINGS } from '../../utils/response.string';
 
 const SECRET_KEY = process.env.JWT_SECRET || 'secretkey';
+
+// TODO: Test Function for Dev Setup
+export const createTestToken = (req: Request, res: Response, next: NextFunction) => {
+    const { id, username, email } = req.body;
+    const accessToken = jwt.sign({ id, username, email }, SECRET_KEY, {
+        expiresIn: '1d',
+    });
+    res.status(200).json({ message: 'Token Generated', accessToken });
+}
 
 export const register = async (req: Request, res: Response, next: NextFunction) => {
     const { username, email, password, confirmPassword, securityQuestion, securityAnswer } = req.body;

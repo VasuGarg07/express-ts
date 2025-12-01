@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { validate } from "../middlewares/validationMiddleware";
-import { BlogPatchValidator, BlogValidator } from "../validators/blogValidator";
-import { addBlog, archiveBlog, deleteAllBlogs, deleteArchivedBlogs, deleteBlogById, getBlogById, getBlogs, getBlogsOfAuthor, getRecentBlogs, getRelatedBlogs, getUserBlogs, updateBlog } from "../controllers/blogController";
+import { BlogPatchValidator, BlogValidator } from "./blogValidator";
+import { addBlog, archiveBlog, deleteAllBlogs, deleteArchivedBlogs, deleteBlogById, getBlogById, getBlogs, getBlogsOfAuthor, getRecentBlogs, getRelatedBlogs, getUserBlogs, updateBlog } from "./blogController";
+import { validate } from "../../middlewares/validationMiddleware";
 
 const router = Router();
 

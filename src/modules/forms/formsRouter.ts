@@ -14,13 +14,13 @@ import {
     getResponseById,
     deleteResponse,
     deleteAllResponses
-} from "../controllers/formlystController";
-import { validate } from "../middlewares/validationMiddleware";
+} from "./formsController";
+import { validate } from "../../middlewares/validationMiddleware";
 import {
     createFormSchema,
     formUpdateSchema,
     formResponseSchema
-} from "../validators/formlystValidators";
+} from "./formsValidator";
 
 const router = Router();
 

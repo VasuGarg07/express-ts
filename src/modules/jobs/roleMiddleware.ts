@@ -1,9 +1,9 @@
 import { NextFunction, Response } from "express";
-import { AuthenticatedRequest } from "../types";
-import { JobRoleTypes } from "../utils/constants";
-import { ERROR_STRINGS } from "../utils/response.string";
-import { Applicant } from "../models/jobscape/applicantModel";
-import { Employer } from "../models/jobscape/employerModel";
+import { AuthenticatedRequest } from "../../types";
+import { JobRoleTypes } from "../../utils/constants";
+import { ERROR_STRINGS } from "../../utils/response.string";
+import { Applicant } from "./applicantModel";
+import { Employer } from "./employerModel";
 
 export const isAuthorized = (allowedRoles: JobRoleTypes[]) => async (
     req: AuthenticatedRequest,
