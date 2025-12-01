@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
-import Expense, { IExpense } from '../models/expenseModel';
-import { AuthenticatedRequest } from '../types';
-import { ERROR_STRINGS, SUCCESS_STRINGS } from '../utils/response.string';
+import Expense, { IExpense } from './expenseModel';
+import { ERROR_STRINGS, SUCCESS_STRINGS } from '../../utils/response.string';
+import { AuthenticatedRequest } from '../../types';
 
 export const addTransaction = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const userId = req.user!.id;
@@ -67,7 +67,6 @@ export const deleteTransaction = async (req: Request, res: Response, next: NextF
 
 export const getAllTransactions = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const userId = req.user!.id;
-
     try {
         const transactions = await Expense.find({ userId });
 

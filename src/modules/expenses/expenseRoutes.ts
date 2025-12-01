@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { importTransactions, addTransaction, clearAllTransactions, deleteTransaction, getAllTransactions, updateTransaction } from "../controllers/expenseController";
-import { validate } from "../middlewares/validationMiddleware";
-import { expenseSchema } from "../validators/expenseValidator";
+import { importTransactions, addTransaction, clearAllTransactions, deleteTransaction, getAllTransactions, updateTransaction } from "./expenseController";
+import { expenseSchema } from "./expenseValidator";
+import { validate } from "../../middlewares/validationMiddleware";
 
 const router = Router();
 

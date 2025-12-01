@@ -1,9 +1,9 @@
 import { NextFunction, Response } from 'express';
-import { Applicant } from '../../models/jobscape/applicantModel';
-import { Application } from '../../models/jobscape/applicationModel';
-import { Employer } from '../../models/jobscape/employerModel';
-import { Job } from '../../models/jobscape/jobModel';
-import { SavedJob } from '../../models/jobscape/savedJobs';
+import { Applicant } from './applicantModel';
+import { Application } from './applicationModel';
+import { Employer } from './employerModel';
+import { Job } from './jobModel';
+import { SavedJob } from './savedJobs';
 import { AuthenticatedRequest } from '../../types';
 import { JobRoles } from '../../utils/constants';
 import { ERROR_STRINGS, SUCCESS_STRINGS } from '../../utils/response.string';

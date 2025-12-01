@@ -1,10 +1,10 @@
 import { Response } from 'express';
 import { ObjectId } from 'mongodb';
-import { Application } from '../../models/jobscape/applicationModel';
-import { Job } from '../../models/jobscape/jobModel';
+import { Application } from './applicationModel';
+import { Job } from './jobModel';
 import { AuthenticatedRequest } from '../../types';
 import { ERROR_STRINGS, SUCCESS_STRINGS } from '../../utils/response.string';
-import { SavedJob } from '../../models/jobscape/savedJobs';
+import { SavedJob } from './savedJobs';
 
 const getJobSummary = async (employerId: string) => {
     const [summary] = await Job.aggregate([

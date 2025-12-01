@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { applyJob, deleteSavedJob, getAppliedJobs, getCompaniesList, getCompanyDetails, getJobBriefing, getJobsList, getRecommendedJobs, getSavedJobs, saveJob } from "../controllers/jobscape/jobs.applicantController";
-import { archiveJob, bulkArchive, bulkDelete, deleteJob, getAllJobsByEmployer, getDashboardAnalytics, getJobApplications, getJobDetails, postJob, updateJob, updateJobApplication } from "../controllers/jobscape/jobs.employerController";
-import { deleteAccount, getProfile, registerApplicant, registerEmployer, updateProfile } from "../controllers/jobscape/jobs.profileController";
-import { jobRoleBasedValidation } from "../middlewares/jobRoleBasedValidation";
-import { isAuthorized } from "../middlewares/roleMiddleware";
-import { validate } from "../middlewares/validationMiddleware";
-import { asyncHandler } from "../utils/utilities";
-import { applicantSchema, employerSchema, jobSchema, jobUpdateSchema, updateApplicationStatusSchema } from "../validators/jobscapeValidators";
+import { validate } from "../../middlewares/validationMiddleware";
+import { asyncHandler } from "../../utils/utilities";
+import { applyJob, deleteSavedJob, getAppliedJobs, getCompaniesList, getCompanyDetails, getJobBriefing, getJobsList, getRecommendedJobs, getSavedJobs, saveJob } from "./jobs.applicantController";
+import { archiveJob, bulkArchive, bulkDelete, deleteJob, getAllJobsByEmployer, getDashboardAnalytics, getJobApplications, getJobDetails, postJob, updateJob, updateJobApplication } from "./jobs.employerController";
+import { deleteAccount, getProfile, registerApplicant, registerEmployer, updateProfile } from "./jobs.profileController";
+import { jobRoleBasedValidation } from "./jobRoleValidation";
+import { applicantSchema, employerSchema, jobSchema, jobUpdateSchema, updateApplicationStatusSchema } from "./jobscapeValidators";
+import { isAuthorized } from "./roleMiddleware";
 
 
 // User Profile

@@ -1,5 +1,5 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
-import { handleDocTransform } from "../utils/utilities";
+import { handleDocTransform } from "../../utils/utilities";
 
 interface IBlog extends Document {
     userId: Types.ObjectId;
