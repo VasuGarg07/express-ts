@@ -1,48 +1,50 @@
 export const ERROR_STRINGS = {
-    IncorrectPassword: "Password don't match. Please verify",
+    // Auth
+    IncorrectPassword: "Password doesn't match. Please verify and try again",
     UserNotFound: "User not found",
-    InvalidCreds: "Invalid Credentials.",
-    ServerError: "Internal server error. An unexpected error occurred.",
+    InvalidCreds: "Invalid credentials",
+    ServerError: "An unexpected error occurred. Please try again later",
     NoRefToken: "Refresh token is required",
     InvalidToken: "Invalid or expired refresh token",
-    UnauthorizedAccess: "Unauthorized Access",
-
+    UnauthorizedAccess: "Unauthorized access",
     ForbiddenAction: "You do not have permission for this action",
 
-    // expenses
+    // Expenses
     InvalidTxnId: "Transaction ID is required and must be valid",
     TransactionNotFound: "Transaction not found",
 
-    // blogs
-    InvalidBlogId: "Blog ID is required is required and must be valid",
+    // Blogs
+    InvalidBlogId: "Blog ID is required and must be valid",
     BlogNotFound: "Blog not found",
+    InvalidNotebookId: "Notebook ID is required and must be valid",
+    NotebookNotFound: "Notebook not found",
 
-    // jobs
-    ProfileNotFound: "Profile not found. Please register to begin using the application",
-    InvalidRole: "Invalid role provided in the headers.",
-    RoleNotFound: "Role is required in the headers.",
-    ApplicantExists: "Applicant already exists.",
-    EmployerExists: "Employer already exists.",
-    JobNotFound: "Job for corresponding Id does not exist.",
-    JobNotOwned: "Unauthorized access: You are not the owner of this job",
-    ApplicationNotFound: "Application for this job is not found",
-    CompanyNotFound: "Company Details not found",
-    ApplicationExists: "You have already applied for this job.",
+    // Jobs
+    ProfileNotFound: "Profile not found. Please register to begin",
+    InvalidRole: "Invalid role provided in headers",
+    RoleNotFound: "Role is required in headers",
+    ApplicantExists: "Applicant already exists",
+    EmployerExists: "Employer already exists",
+    JobNotFound: "Job not found",
+    JobNotOwned: "You are not the owner of this job",
+    ApplicationNotFound: "Application not found",
+    CompanyNotFound: "Company details not found",
+    ApplicationExists: "You have already applied for this job",
     NoJobsForApplications: "No jobs found for the given applications",
-    JobAlreadySaved: "Job is already saved.",
-    NoApplicant: "Applicant not found.",
+    JobAlreadySaved: "Job is already saved",
+    NoApplicant: "Applicant not found",
 
-    // form builder
+    // Form Builder
     InvalidFormId: "Form ID is required and must be valid",
     FormNotFound: "Form not found",
-    FormNotOwned: "Unauthorized access: You are not the owner of this form",
+    FormNotOwned: "You are not the owner of this form",
     FormInactive: "This form is no longer active",
     InvalidFormConfig: "Invalid form configuration",
     InvalidFormResponse: "Invalid form response data",
     ResponseNotFound: "Form response not found",
     FormValidationFailed: "Form validation failed",
     ResponseSubmissionFailed: "Failed to submit form response",
-    MaxFormsReached: "Maximum number of forms reached for this user",
+    MaxFormsReached: "Maximum number of forms reached",
     InvalidFieldType: "Invalid field type provided",
     DuplicateKeys: "Duplicate keys found in form structure",
     FormLimitExceeded: "Form structure exceeds allowed limits",
@@ -52,38 +54,43 @@ export const ERROR_STRINGS = {
 };
 
 export const SUCCESS_STRINGS = {
+    // Auth
     UserCreated: "User registered successfully",
     PasswordChanged: "Password changed successfully",
     TokenRefreshed: "Access token refreshed",
 
-    // expenses
-    TransactionAdded: "New Transaction added successfully",
+    // Expenses
+    TransactionAdded: "Transaction added successfully",
     TranscationUpdated: "Transaction updated successfully",
     TransactionDeleted: "Transaction deleted successfully",
 
-    // blogs
-    BlogAdded: "Your blog has been published successfully",
-    BlogUpdated: "Your blog has been updated",
-    BlogArchived: "This blog has been archived",
-    BlogDeleted: "This blog has been deleted",
-    ArchivedBlogsCleared: "All archived blogs have been cleared",
-    AllBlogsCleared: "All blogs have been cleared",
+    // Blogs
+    BlogAdded: "Blog published successfully",
+    BlogUpdated: "Blog updated successfully",
+    BlogArchived: "Blog archived successfully",
+    BlogDeleted: "Blog deleted successfully",
+    BlogMoved: "Blog moved successfully",
+    ArchivedBlogsCleared: "All archived blogs cleared",
+    AllBlogsCleared: "All blogs cleared",
+    NotebookCreated: "Notebook created successfully",
+    NotebookUpdated: "Notebook updated successfully",
+    NotebookDeleted: "Notebook deleted successfully",
 
-    // jobs
-    ApplicantRegistered: "Applicant registered successfully.",
-    EmployerRegistered: "Employer registered successfully.",
-    ProfileUpdated: "Profile updated successfully.",
-    ApplicantDeleted: "Applicant account and associated data deleted successfully.",
-    EmployerDeleted: "Employer account and associated data deleted successfully.",
+    // Jobs
+    ApplicantRegistered: "Applicant registered successfully",
+    EmployerRegistered: "Employer registered successfully",
+    ProfileUpdated: "Profile updated successfully",
+    ApplicantDeleted: "Applicant account deleted successfully",
+    EmployerDeleted: "Employer account deleted successfully",
     JobPosted: "Job posted successfully",
     JobUpdated: "Job updated successfully",
     JobDeleted: "Job deleted successfully",
-    ApplicationUpdated: "Job Application Updated",
-    ApplicationSubmitted: "Application submitted successfully.",
-    NoApplications: "No applications found for the applicant.",
-    JobSaved: 'Job saved successfully.',
+    ApplicationUpdated: "Application updated successfully",
+    ApplicationSubmitted: "Application submitted successfully",
+    NoApplications: "No applications found",
+    JobSaved: "Job saved successfully",
 
-    // form builder
+    // Form Builder
     FormCreated: "Form created successfully",
     FormUpdated: "Form updated successfully",
     FormDeleted: "Form deleted successfully",
@@ -91,8 +98,8 @@ export const SUCCESS_STRINGS = {
     FormActivated: "Form activated successfully",
     FormDeactivated: "Form deactivated successfully",
     FormDuplicated: "Form duplicated successfully",
-    ResponseSubmitted: "Form response submitted successfully",
-    ResponseDeleted: "Form response deleted successfully",
-    FormExported: "Form configuration exported successfully",
-    FormImported: "Form configuration imported successfully",
+    ResponseSubmitted: "Response submitted successfully",
+    ResponseDeleted: "Response deleted successfully",
+    FormExported: "Form exported successfully",
+    FormImported: "Form imported successfully",
 };

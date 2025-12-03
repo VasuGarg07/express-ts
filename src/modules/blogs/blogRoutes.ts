@@ -1,23 +1,38 @@
+// blogRoutes.ts
 import { Router } from "express";
 import { BlogPatchValidator, BlogValidator } from "./blogValidator";
-import { addBlog, archiveBlog, deleteAllBlogs, deleteArchivedBlogs, deleteBlogById, getBlogById, getBlogs, getBlogsOfAuthor, getRecentBlogs, getRelatedBlogs, getUserBlogs, updateBlog } from "./blogController";
 import { validate } from "../../middlewares/validationMiddleware";
+import {
+    addBlog,
+    archiveBlog,
+    deleteAllBlogs,
+    deleteArchivedBlogs,
+    deleteBlogById,
+    getBlogById,
+    getBlogs,
+    getBlogsOfAuthor,
+    getBlogsByNotebook,
+    getRelatedBlogs,
+    getUserBlogs,
+    updateBlog,
+    moveBlog,
+} from "./blogController";
 
 const router = Router();
 
 router.get('/list', getBlogs);
-router.get('/recent', getRecentBlogs); // recent 5-8 blogs
-router.get('/list/me', getUserBlogs); // all blogs of logged in user
-router.get('/list/author/:name', getBlogsOfAuthor); // all blogs of an author
-router.get('/blog/:id', getBlogById); // all blogs of an author
+router.get('/list/me', getUserBlogs);
+router.get('/list/author/:name', getBlogsOfAuthor);
+router.get('/list/notebook/:notebookId', getBlogsByNotebook);
+router.get('/blog/:id', getBlogById);
 router.get('/related/:id', getRelatedBlogs);
-router.post('/publish', validate(BlogValidator), addBlog); // publish new blog
+router.post('/publish/:notebookId', validate(BlogValidator), addBlog);
 
-// (user must be author)
-router.patch('/update/:id', validate(BlogPatchValidator), updateBlog); // update blog by id
-router.patch('/archive/:id', archiveBlog) // archive blog by id
-router.delete('/clear-all', deleteAllBlogs); // delete all blogs
-router.delete('/clear-archived', deleteArchivedBlogs); // delete archived blog
+router.patch('/update/:id', validate(BlogPatchValidator), updateBlog);
+router.patch('/move/:id/:notebookId', moveBlog);
+router.patch('/archive/:id', archiveBlog);
+router.delete('/clear', deleteAllBlogs);
+router.delete('/clear-archived', deleteArchivedBlogs);
 router.delete('/clear/:id', deleteBlogById);
 
 export default router;
