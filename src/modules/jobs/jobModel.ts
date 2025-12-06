@@ -1,73 +1,99 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 import { handleDocTransform } from "../../utils/utilities";
 
-export interface IJobDetails {
+// ==================== INTERFACES ====================
+
+export interface IJobApplication {
+    applicantId: Types.ObjectId;
+    coverLetter?: string;
+    appliedAt: Date;
+}
+
+export interface IJob extends Document {
+    postedBy: Types.ObjectId;
+
+    // Basic Info
+    title: string;
+    location: string;
+    jobLevel: 'internship' | 'entry-level' | 'mid-level' | 'senior-level' | 'lead' | 'manager';
+    vacancies: number;
+
+    // Employment Details
+    employmentType: 'full-time' | 'part-time' | 'contractual' | 'freelance' | 'internship';
+    shiftType: 'day' | 'night' | 'flexible';
+    salaryRange: string;
+    experienceRequired: string;
+
+    // Content
     description: string;
     requirements: string;
     responsibilities?: string;
     benefits?: string;
-    tags?: string[];
-}
 
-export interface IJob extends IJobDetails, Document {
-    postedBy: Types.ObjectId;
-    title: string;
-    location: string;
-    jobLevel: "internship" | "entry-level" | "mid-level" | "senior-level" | "lead" | "manager";
-
+    // Skills & Tags
     skillsRequired: string[];
-    experienceRequired: string;
-    salaryRange: string;
-    employmentType: "full-time" | "part-time" | "contractual" | "freelance" | "internship";
-    shiftType: 'day' | 'night' | 'flexible';
-    vacancies: number;
+    tags?: string[];
 
-    isFeatured?: boolean;
-    isArchived?: boolean;
+    // Status
+    isArchived: boolean;
+
+    // Applications
+    applications: IJobApplication[];
 }
 
+// ==================== SCHEMA ====================
 
-const jobSchema = new Schema<IJob>(
-    {
-        postedBy: { type: Schema.Types.ObjectId, ref: "employers", required: true },
-        title: { type: String, required: true },
-        location: { type: String, required: true },
-        jobLevel: {
-            type: String,
-            enum: ["internship", "entry-level", "mid-level", "senior-level", "lead", "manager"],
-            required: true
-        },
+const jobApplicationSchema = new Schema<IJobApplication>({
+    applicantId: { type: Schema.Types.ObjectId, ref: 'applicants', required: true },
+    coverLetter: { type: String },
+    appliedAt: { type: Date, default: Date.now }
+}, { _id: false });
 
-        description: { type: String, required: true },
-        requirements: { type: String, required: true },
-        responsibilities: { type: String },
-        benefits: { type: String },
-        tags: { type: [String] },
+const jobSchema = new Schema<IJob>({
+    postedBy: { type: Schema.Types.ObjectId, ref: 'employers', required: true },
 
-        skillsRequired: { type: [String], required: true },
-        experienceRequired: { type: String, required: true },
-        salaryRange: { type: String, required: true },
-        employmentType: {
-            type: String,
-            enum: ["full-time", "part-time", "contractual", "freelance", "internship"],
-            required: true,
-        },
-        shiftType: {
-            type: String,
-            enum: ["day", "night", "flexible"],
-            required: true,
-        },
-        vacancies: { type: Number, default: 1 },
-
-        isArchived: { type: Boolean, default: false },
-        isFeatured: { type: Boolean, default: false },
+    // Basic Info
+    title: { type: String, required: true },
+    location: { type: String, required: true },
+    jobLevel: {
+        type: String,
+        enum: ['internship', 'entry-level', 'mid-level', 'senior-level', 'lead', 'manager'],
+        required: true
     },
-    {
-        timestamps: true,
-        toJSON: {
-            transform: handleDocTransform,
-        },
-    }
-);
+    vacancies: { type: Number, required: true, default: 1 },
 
-export const Job = mongoose.model<IJob>("jobs", jobSchema);
+    // Employment Details
+    employmentType: {
+        type: String,
+        enum: ['full-time', 'part-time', 'contractual', 'freelance', 'internship'],
+        required: true
+    },
+    shiftType: {
+        type: String,
+        enum: ['day', 'night', 'flexible'],
+        required: true
+    },
+    salaryRange: { type: String, required: true },
+    experienceRequired: { type: String, required: true },
+
+    // Content
+    description: { type: String, required: true },
+    requirements: { type: String, required: true },
+    responsibilities: { type: String },
+    benefits: { type: String },
+
+    // Skills & Tags
+    skillsRequired: { type: [String], required: true },
+    tags: { type: [String] },
+
+    // Status
+    isArchived: { type: Boolean, default: false },
+
+    // Applications
+    applications: [jobApplicationSchema]
+}, {
+    timestamps: true,
+    toJSON: { transform: handleDocTransform }
+});
+
+export const Job = mongoose.model<IJob>('jobs', jobSchema);
