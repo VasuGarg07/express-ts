@@ -1,74 +1,88 @@
 import { Router } from "express";
-import { validate } from "../../middlewares/validationMiddleware";
-import { asyncHandler } from "../../utils/utilities";
-import { applyJob, deleteSavedJob, getAppliedJobs, getCompaniesList, getCompanyDetails, getJobBriefing, getJobsList, getRecommendedJobs, getSavedJobs, saveJob } from "./jobs.applicantController";
-import { archiveJob, bulkArchive, bulkDelete, deleteJob, getAllJobsByEmployer, getDashboardAnalytics, getJobApplications, getJobDetails, postJob, updateJob, updateJobApplication } from "./jobs.employerController";
-import { deleteAccount, getProfile, registerApplicant, registerEmployer, updateProfile } from "./jobs.profileController";
-import { jobRoleBasedValidation } from "./jobRoleValidation";
-import { applicantSchema, employerSchema, jobSchema, jobUpdateSchema, updateApplicationStatusSchema } from "./jobscapeValidators";
-import { isAuthorized } from "./roleMiddleware";
+import { validate, roleBasedValidate } from "./validationMiddleware";
+import { extractRole, isApplicant, isEmployer } from "./roleMiddleware";
+import {
+    applicantSchema,
+    employerSchema,
+    jobSchema,
+    jobUpdateSchema,
+    applyJobSchema
+} from "./jobValidators";
 
+import {
+    getProfile,
+    registerApplicant,
+    registerEmployer,
+    updateProfile,
+    deleteAccount
+} from "./profileController";
 
-// User Profile
-const profileRouter = Router();
-profileRouter.get('/profile', asyncHandler(getProfile));
-profileRouter.post('/register/applicant', validate(applicantSchema), asyncHandler(registerApplicant));
-profileRouter.post('/register/employer', validate(employerSchema), asyncHandler(registerEmployer));
-profileRouter.patch('/profile/update', jobRoleBasedValidation, asyncHandler(updateProfile));
-profileRouter.delete('/account/:accountId', asyncHandler(deleteAccount));
+import {
+    getJobs,
+    getJobDetails,
+    applyToJob,
+    getMyApplications,
+    toggleSaveJob,
+    getSavedJobs,
+    getCompanies,
+    getCompanyDetails
+} from "./applicantController";
 
-// Employer Dashboard
-const employerRouter = Router();
+import {
+    getMyJobs,
+    createJob,
+    getJobWithApplications,
+    updateJob,
+    deleteJob,
+    toggleArchiveJob
+} from "./employerController";
 
-// Job Listing & Analytics
-employerRouter.get('/dashboard', asyncHandler(getDashboardAnalytics));
-employerRouter.get('/jobs', asyncHandler(getAllJobsByEmployer));
+const router = Router();
 
-// Individual Job Management
-employerRouter.post('/jobs/new', validate(jobSchema), asyncHandler(postJob));
-employerRouter.get('/jobs/:jobId', asyncHandler(getJobDetails));
-employerRouter.patch('/jobs/:jobId/update', validate(jobUpdateSchema), asyncHandler(updateJob));
-employerRouter.delete('/jobs/:jobId/delete', asyncHandler(deleteJob));
-employerRouter.patch('/jobs/:jobId/archive', asyncHandler(archiveJob));
+// ==================== PROFILE ROUTES ====================
 
-// Bulk Job Management
-employerRouter.post('/jobs/archive', asyncHandler(bulkArchive));
-employerRouter.delete('/jobs/clear', asyncHandler(bulkDelete));
+router.get('/profile', extractRole, getProfile);
+router.post('/applicant/register', validate(applicantSchema), registerApplicant);
+router.post('/employer/register', validate(employerSchema), registerEmployer);
+router.patch('/profile', extractRole, roleBasedValidate, updateProfile);
+router.delete('/account/:id', extractRole, deleteAccount);
 
-// Application Management
-employerRouter.get('/applications/:jobId', asyncHandler(getJobApplications));
-employerRouter.post('/applications/status', validate(updateApplicationStatusSchema), asyncHandler(updateJobApplication));
+// ==================== APPLICANT ROUTES ====================
 
-
-// Applicant Dashboard
 const applicantRouter = Router();
+applicantRouter.use(isApplicant); // All routes require applicant profile
 
-// Job Management
-applicantRouter.get('/jobs', asyncHandler(getJobsList));
-applicantRouter.get('/jobs/:jobId', asyncHandler(getJobBriefing));
+// Jobs
+applicantRouter.get('/jobs', getJobs);
+applicantRouter.get('/jobs/:id', getJobDetails);
+applicantRouter.post('/jobs/:id/apply', validate(applyJobSchema), applyToJob);
 
-// Company Details
-applicantRouter.get('/companies', asyncHandler(getCompaniesList));
-applicantRouter.get('/companies/:companyId', asyncHandler(getCompanyDetails));
-
-
-// Application Management
-applicantRouter.post('/jobs/apply', asyncHandler(applyJob));
-applicantRouter.get('/applications', asyncHandler(getAppliedJobs));
+// Applications
+applicantRouter.get('/applications', getMyApplications);
 
 // Saved Jobs
-applicantRouter.post('/jobs/save', asyncHandler(saveJob));
-applicantRouter.get('/saved-jobs', asyncHandler(getSavedJobs));
-applicantRouter.delete('/saved-jobs/:jobId', asyncHandler(deleteSavedJob));
+applicantRouter.patch('/jobs/:id/save', toggleSaveJob);
+applicantRouter.get('/saved-jobs', getSavedJobs);
 
-// Job Listing & Analytics
-applicantRouter.get('/recommended', asyncHandler(getRecommendedJobs));
+// Companies
+applicantRouter.get('/companies', getCompanies);
+applicantRouter.get('/companies/:id', getCompanyDetails);
 
+router.use('/applicant', applicantRouter);
 
-// Main Router
-const router = Router();
-router.use('/', profileRouter);
-router.use('/employer', isAuthorized(['employer']), employerRouter);
-router.use('/applicant', isAuthorized(['applicant']), applicantRouter);
+// ==================== EMPLOYER ROUTES ====================
+
+const employerRouter = Router();
+employerRouter.use(isEmployer); // All routes require employer profile
+
+// Jobs Management
+employerRouter.get('/jobs', getMyJobs);
+employerRouter.post('/jobs', validate(jobSchema), createJob);
+employerRouter.get('/jobs/:id', getJobWithApplications);
+employerRouter.patch('/jobs/:id', validate(jobUpdateSchema), updateJob);
+employerRouter.delete('/jobs/:id', deleteJob);
+employerRouter.patch('/jobs/:id/archive', toggleArchiveJob);
+
+router.use('/employer', employerRouter);
 
 export default router;
