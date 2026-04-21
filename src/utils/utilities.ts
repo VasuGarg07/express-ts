@@ -1,6 +1,7 @@
 import { compare, hash } from 'bcrypt';
 import { Request, Response, NextFunction } from "express";
 import { AuthenticatedRequest } from '../types';
+import crypto from 'crypto';
 
 interface PaginationQuery {
     page?: string;
@@ -55,3 +56,9 @@ export const generateShareUrl = (): string => {
     const randomStr = Math.random().toString(36).substring(2, 8);
     return `${timestamp}-${randomStr}`;
 };
+
+export const generateId = (length = 32): string => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const bytes = crypto.randomBytes(length);
+  return Array.from(bytes, b => chars[b % chars.length]).join('');
+}

@@ -7,7 +7,6 @@ import expenseRouter from './modules/expenses/expenseRoutes';
 import formsRouter, { publicRoutes as formsPublicRouter } from './modules/forms/formsRouter';
 import invoiceRouter from './modules/invoices/invoiceRoutes';
 import jobsRouter from './modules/jobs/jobsRoutes';
-import { errorHandler } from './middlewares/errorMiddleware';
 import { authenticate } from './middlewares/authMiddleware';
 
 export const initRoutes = (app: Application) => {
@@ -35,7 +34,4 @@ export const initRoutes = (app: Application) => {
 
     // Formlyst
     app.use('/api/formlyst', formsRouter);
-
-    // Global error handler
-    app.use(errorHandler);
 };
