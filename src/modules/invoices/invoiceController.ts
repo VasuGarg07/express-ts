@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import PDFDocument from "pdfkit";
-import { Invoice } from "./invoiceModel";
+import { Invoice } from "./invoice.interface";
 
 export const generateInvoice = async (req: Request, res: Response, next: NextFunction) => {
     try {
