@@ -4,13 +4,14 @@ import { compareData, hashData } from '../../utils/utilities';
 import User from './userModel';
 import { ERROR_STRINGS, SUCCESS_STRINGS } from '../../utils/response.string';
 import RefreshToken from './refreshTokenModel';
+import CONFIG from '../../config/config';
 
-const SECRET_KEY = process.env.JWT_SECRET || 'secretkey';
+const secretKey = CONFIG.SECRET_KEY;
 
 // TODO: Test Function for Dev Setup
 export const createTestToken = (req: Request, res: Response, next: NextFunction) => {
     const { id, username, email } = req.body;
-    const accessToken = jwt.sign({ id, username, email }, SECRET_KEY, {
+    const accessToken = jwt.sign({ id, username, email }, secretKey, {
         expiresIn: '1d',
     });
     res.status(200).json({ message: 'Token Generated', accessToken });
@@ -68,10 +69,10 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
             return;
         }
 
-        const accessToken = jwt.sign({ id: user._id, username: user.username, email: user.email }, SECRET_KEY, {
+        const accessToken = jwt.sign({ id: user._id, username: user.username, email: user.email }, secretKey, {
             expiresIn: '2h',
         });
-        const refreshToken = jwt.sign({ id: user._id, username: user.username, email: user.email }, SECRET_KEY, {
+        const refreshToken = jwt.sign({ id: user._id, username: user.username, email: user.email }, secretKey, {
             expiresIn: '1d',
         });
         await RefreshToken.create({
@@ -129,7 +130,7 @@ export const refreshAccessToken = async (req: Request, res: Response, next: Next
         }
 
         // Verify the refresh token
-        jwt.verify(refreshToken, SECRET_KEY, async (err: any, decoded: any) => {
+        jwt.verify(refreshToken, secretKey, async (err: any, decoded: any) => {
             if (err) {
                 // Token is invalid/expired — clean it up from DB
                 await RefreshToken.deleteOne({ token: refreshToken });
@@ -149,12 +150,12 @@ export const refreshAccessToken = async (req: Request, res: Response, next: Next
 
             const accessToken = jwt.sign(
                 { id: user._id, username: user.username, email: user.email },
-                SECRET_KEY,
+                secretKey,
                 { expiresIn: '2h' }
             );
             const newRefreshToken = jwt.sign(
                 { id: user._id, username: user.username, email: user.email },
-                SECRET_KEY,
+                secretKey,
                 { expiresIn: '1d' }
             );
 
