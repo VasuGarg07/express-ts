@@ -2,6 +2,8 @@ import { compare, hash } from 'bcrypt';
 import { Request, Response, NextFunction } from "express";
 import { AuthenticatedRequest } from '../types';
 import crypto from 'crypto';
+import { Types } from 'mongoose';
+import { ApiError } from './ApiError';
 
 interface PaginationQuery {
     page?: string;
@@ -62,3 +64,9 @@ export const generateId = (length = 32): string => {
   const bytes = crypto.randomBytes(length);
   return Array.from(bytes, b => chars[b % chars.length]).join('');
 }
+
+export const validateObjectId = (id: string, errorMessage: string) => {
+  if (!Types.ObjectId.isValid(id)) {
+    throw new ApiError(400, errorMessage);
+  }
+};
