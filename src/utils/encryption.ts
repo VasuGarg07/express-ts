@@ -1,7 +1,7 @@
 import CryptoJS from "crypto-js";
+import CONFIG from "../config/config";
 
-// Secret Key (ensure this is securely stored in .env)
-const secretKey = process.env.ENCRYPTION_KEY!;
+const secretKey = CONFIG.ENCRYPTION_KEY;
 
 // Encrypt Function
 export const encryptString = (text: string): string => {
