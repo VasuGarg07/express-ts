@@ -22,13 +22,13 @@ const expenseSchema: Schema = new Schema<IExpense>(
     },
     {
         toJSON: {
-            transform: (_, ret) => {
-                ret.id = ret._id;
-                ret.date = ret.date * 1000;
-                delete ret._id;
-                delete ret.__v;
-                return ret;
-            },
+            transform: (doc, ret) => {
+                const { _id, __v, date, ...rest } = ret;
+                return { 
+                    id: _id, 
+                    date: date * 1000,
+                    ...rest };
+            }
         },
     }
 );

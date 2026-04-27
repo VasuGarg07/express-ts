@@ -18,7 +18,7 @@ export const addTransaction = async (req: AuthenticatedRequest, res: Response, n
 export const updateTransaction = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { title, amount, type, category, date, description } = req.body;
-    const transaction = await expenseService.editTransaction(req.params.id, {
+    const transaction = await expenseService.editTransaction(req.params.id as string, {
       title, amount, type, category, date, description,
     });
     res.status(200).json({ message: SUCCESS_STRINGS.TranscationUpdated, transaction });
@@ -29,7 +29,7 @@ export const updateTransaction = async (req: Request, res: Response, next: NextF
 
 export const deleteTransaction = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    await expenseService.removeTransaction(req.params.id);
+    await expenseService.removeTransaction(req.params.id as string);
     res.status(200).json({ message: SUCCESS_STRINGS.TransactionDeleted });
   } catch (error) {
     next(error);

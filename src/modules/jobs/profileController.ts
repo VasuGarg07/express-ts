@@ -43,7 +43,7 @@ export const deleteAccount = async (req: AuthenticatedRequest, res: Response, ne
     const message = await profileService.deleteUserAccount(
       res.locals.role,
       res.locals.profileId,
-      req.params.id
+      req.params.id as string
     );
     res.status(200).json({ message });
   } catch (error) {

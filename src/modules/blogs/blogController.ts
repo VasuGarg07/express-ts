@@ -14,7 +14,7 @@ export const getBlogs = async (req: Request, res: Response, next: NextFunction) 
 
 export const getBlogsOfAuthor = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await blogService.fetchBlogsByAuthor(req.params.name, req.query);
+    const response = await blogService.fetchBlogsByAuthor(req.params.name as string, req.query);
     res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -32,7 +32,7 @@ export const getUserBlogs = async (req: AuthenticatedRequest, res: Response, nex
 
 export const getBlogsByNotebook = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await blogService.fetchBlogsByNotebook(req.params.notebookId, req.query);
+    const response = await blogService.fetchBlogsByNotebook(req.params.notebookId as string, req.query);
     res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -41,7 +41,7 @@ export const getBlogsByNotebook = async (req: Request, res: Response, next: Next
 
 export const getBlogById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const blog = await blogService.fetchBlogById(req.params.id);
+    const blog = await blogService.fetchBlogById(req.params.id as string);
     res.status(200).json({ message: 'success', blog });
   } catch (error) {
     next(error);
@@ -50,7 +50,7 @@ export const getBlogById = async (req: Request, res: Response, next: NextFunctio
 
 export const getRelatedBlogs = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const blogs = await blogService.fetchRelatedBlogs(req.params.id);
+    const blogs = await blogService.fetchRelatedBlogs(req.params.id as string);
     if (blogs.length === 0) {
       res.status(200).json({ message: 'No related blogs found.', blogs: [] });
       return;
@@ -64,7 +64,7 @@ export const getRelatedBlogs = async (req: Request, res: Response, next: NextFun
 export const addBlog = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { author, title, blogContent, tags, isArchived } = req.body;
-    const blog = await blogService.createBlog(req.user!.id, req.params.notebookId, {
+    const blog = await blogService.createBlog(req.user!.id, req.params.notebookId as string, {
       author,
       title,
       blogContent,
@@ -79,7 +79,7 @@ export const addBlog = async (req: AuthenticatedRequest, res: Response, next: Ne
 
 export const updateBlog = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const blog = await blogService.editBlog(req.user!.id, req.params.id, req.body);
+    const blog = await blogService.editBlog(req.user!.id, req.params.id as string, req.body);
     res.status(200).json({ message: SUCCESS_STRINGS.BlogUpdated, blog });
   } catch (error) {
     next(error);
@@ -90,8 +90,8 @@ export const moveBlog = async (req: AuthenticatedRequest, res: Response, next: N
   try {
     const blog = await blogService.moveBlogToNotebook(
       req.user!.id,
-      req.params.id,
-      req.params.notebookId
+      req.params.id as string,
+      req.params.notebookId as string
     );
     res.status(200).json({ message: SUCCESS_STRINGS.BlogMoved, blog });
   } catch (error) {
@@ -101,7 +101,7 @@ export const moveBlog = async (req: AuthenticatedRequest, res: Response, next: N
 
 export const archiveBlog = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const blog = await blogService.archiveBlogById(req.user!.id, req.params.id);
+    const blog = await blogService.archiveBlogById(req.user!.id, req.params.id as string);
     res.status(200).json({ message: SUCCESS_STRINGS.BlogArchived, blog });
   } catch (error) {
     next(error);
@@ -128,7 +128,7 @@ export const deleteArchivedBlogs = async (req: AuthenticatedRequest, res: Respon
 
 export const deleteBlogById = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    await blogService.removeBlogById(req.user!.id, req.params.id);
+    await blogService.removeBlogById(req.user!.id, req.params.id as string);
     res.status(200).json({ message: SUCCESS_STRINGS.BlogDeleted, deleteCount: 1 });
   } catch (error) {
     next(error);

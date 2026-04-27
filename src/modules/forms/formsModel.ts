@@ -158,12 +158,10 @@ const formSchema = new Schema<IForm>(
     {
         timestamps: true,
         toJSON: {
-            transform: (_, ret) => {
-                ret.id = ret._id;
-                delete ret._id;
-                delete ret.__v;
-                return ret;
-            },
+            transform: (doc, ret) => {
+                const { _id, __v, ...rest } = ret;
+                return { id: _id, ...rest };
+            }
         },
     }
 );
@@ -179,12 +177,10 @@ const formResponseSchema = new Schema<IFormResponse>(
     },
     {
         toJSON: {
-            transform: (_, ret) => {
-                ret.id = ret._id;
-                delete ret._id;
-                delete ret.__v;
-                return ret;
-            },
+            transform: (doc, ret) => {
+                const { _id, __v, ...rest } = ret;
+                return { id: _id, ...rest };
+            }
         },
     }
 );

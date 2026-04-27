@@ -13,7 +13,7 @@ export const getJobs = async (req: Request, res: Response, next: NextFunction) =
 
 export const getJobDetails = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const job = await jobsService.fetchJobDetails(req.params.id);
+    const job = await jobsService.fetchJobDetails(req.params.id as string);
     res.status(200).json({ job });
   } catch (error) {
     next(error);
@@ -22,7 +22,7 @@ export const getJobDetails = async (req: Request, res: Response, next: NextFunct
 
 export const applyToJob = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    await jobsService.applyForJob(res.locals.profileId, req.params.id, req.body.coverLetter);
+    await jobsService.applyForJob(res.locals.profileId, req.params.id as string, req.body.coverLetter);
     res.status(201).json({ message: 'Application submitted successfully' });
   } catch (error) {
     next(error);
@@ -40,7 +40,7 @@ export const getMyApplications = async (req: AuthenticatedRequest, res: Response
 
 export const toggleSaveJob = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const result = await jobsService.toggleSavedJob(res.locals.profileId, req.params.id);
+    const result = await jobsService.toggleSavedJob(res.locals.profileId, req.params.id as string);
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -67,7 +67,7 @@ export const getCompanies = async (req: Request, res: Response, next: NextFuncti
 
 export const getCompanyDetails = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await jobsService.fetchCompanyDetails(req.params.id);
+    const result = await jobsService.fetchCompanyDetails(req.params.id as string);
     res.status(200).json(result);
   } catch (error) {
     next(error);

@@ -26,7 +26,7 @@ export const getUserForms = async (req: AuthenticatedRequest, res: Response, nex
 
 export const getFormById = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const form = await formService.fetchFormById(req.params.formId, req.user!.id);
+    const form = await formService.fetchFormById(req.params.formId as string, req.user!.id);
     res.status(200).json({ form });
   } catch (error) {
     next(error);
@@ -35,7 +35,7 @@ export const getFormById = async (req: AuthenticatedRequest, res: Response, next
 
 export const updateForm = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const form = await formService.editForm(req.params.formId, req.user!.id, req.body);
+    const form = await formService.editForm(req.params.formId as string, req.user!.id, req.body);
     res.status(200).json({ message: SUCCESS_STRINGS.FormUpdated, form });
   } catch (error) {
     next(error);
@@ -44,7 +44,7 @@ export const updateForm = async (req: AuthenticatedRequest, res: Response, next:
 
 export const deleteForm = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    await formService.removeForm(req.params.formId, req.user!.id);
+    await formService.removeForm(req.params.formId as string, req.user!.id);
     res.status(200).json({ message: SUCCESS_STRINGS.FormDeleted });
   } catch (error) {
     next(error);
@@ -53,7 +53,7 @@ export const deleteForm = async (req: AuthenticatedRequest, res: Response, next:
 
 export const duplicateForm = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const form = await formService.cloneForm(req.params.formId, req.user!.id);
+    const form = await formService.cloneForm(req.params.formId as string, req.user!.id);
     res.status(201).json({ message: SUCCESS_STRINGS.FormDuplicated, form });
   } catch (error) {
     next(error);
@@ -62,7 +62,7 @@ export const duplicateForm = async (req: AuthenticatedRequest, res: Response, ne
 
 export const toggleFormStatus = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const { form, newStatus } = await formService.toggleStatus(req.params.formId, req.user!.id);
+    const { form, newStatus } = await formService.toggleStatus(req.params.formId as string, req.user!.id);
     const message = newStatus ? SUCCESS_STRINGS.FormActivated : SUCCESS_STRINGS.FormDeactivated;
     res.status(200).json({ message, form });
   } catch (error) {
@@ -83,7 +83,7 @@ export const searchForms = async (req: AuthenticatedRequest, res: Response, next
 
 export const getPublicForm = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const form = await formService.fetchPublicForm(req.params.shareUrl);
+    const form = await formService.fetchPublicForm(req.params.shareUrl as string);
     res.status(200).json({ form });
   } catch (error) {
     next(error);
@@ -93,7 +93,7 @@ export const getPublicForm = async (req: Request, res: Response, next: NextFunct
 export const submitFormResponse = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const formResponse = await formService.submitResponse(
-      req.params.shareUrl,
+      req.params.shareUrl as string,
       req.body.responses,
       req.ip,
       req.get('User-Agent')
@@ -111,7 +111,7 @@ export const submitFormResponse = async (req: Request, res: Response, next: Next
 
 export const getFormResponses = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const responses = await formService.fetchFormResponses(req.params.formId, req.user!.id);
+    const responses = await formService.fetchFormResponses(req.params.formId as string, req.user!.id);
     res.status(200).json({ responses });
   } catch (error) {
     next(error);
@@ -120,7 +120,7 @@ export const getFormResponses = async (req: AuthenticatedRequest, res: Response,
 
 export const getResponseById = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const response = await formService.fetchResponseById(req.params.responseId, req.user!.id);
+    const response = await formService.fetchResponseById(req.params.responseId as string, req.user!.id);
     res.status(200).json({ response });
   } catch (error) {
     next(error);
@@ -129,7 +129,7 @@ export const getResponseById = async (req: AuthenticatedRequest, res: Response, 
 
 export const deleteResponse = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    await formService.removeResponse(req.params.responseId, req.user!.id);
+    await formService.removeResponse(req.params.responseId as string, req.user!.id);
     res.status(200).json({ message: SUCCESS_STRINGS.ResponseDeleted });
   } catch (error) {
     next(error);
@@ -138,7 +138,7 @@ export const deleteResponse = async (req: AuthenticatedRequest, res: Response, n
 
 export const deleteAllResponses = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const deletedCount = await formService.removeAllResponses(req.params.formId, req.user!.id);
+    const deletedCount = await formService.removeAllResponses(req.params.formId as string, req.user!.id);
     res.status(200).json({
       message: `${deletedCount} responses deleted successfully`,
       deletedCount,
