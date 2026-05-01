@@ -19,6 +19,14 @@ npm-debug.log*
 # Generated
 swagger-output.json
 
+# OS / Editor
+.DS_Store
+.vscode/
+.idea/
+
+# Coverage (Jest)
+coverage/
+
 # Personal
 project_plans/
 postman_collections/
