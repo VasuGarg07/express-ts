@@ -1,7 +1,7 @@
 import mongoose, { Schema } from "mongoose";
 
 const refreshTokenSchema = new Schema({
-    token: { type: String, required: true, unique: true },
+    tokenHash: { type: String, required: true, unique: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'users', required: true },
     expiresAt: { type: Date, required: true },
 }, { timestamps: true });

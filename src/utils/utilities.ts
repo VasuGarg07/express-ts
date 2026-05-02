@@ -71,3 +71,7 @@ export const validateObjectId = (id: string, errorMessage: string) => {
     throw new ApiError(400, errorMessage);
   }
 };
+
+export const hashToken = (token: string): string => {
+    return crypto.createHash('sha256').update(token).digest('hex');
+};
