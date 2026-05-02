@@ -12,6 +12,10 @@ jest.mock('jsonwebtoken');
 
 describe('authService', () => {
 
+  beforeEach(() => {
+    (utilities.hashToken as jest.Mock).mockImplementation((t: string) => `hashed:${t}`);
+  });
+
   // ==================== generateTestToken ====================
   describe('generateTestToken', () => {
     it('should return an access token signed with given payload', () => {
@@ -101,33 +105,34 @@ describe('authService', () => {
       expect(RefreshToken.create).toHaveBeenCalledTimes(1);
       expect(RefreshToken.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          token: 'refresh-token',
+          tokenHash: 'hashed:refresh-token',
           userId: 'user-1',
         })
       );
     });
 
-    it('should throw 400 when username is missing', async () => {
-      await expect(authService.loginUser('', 'password')).rejects.toMatchObject({
-        statusCode: 400,
-        message: ERROR_STRINGS.InvalidCreds,
-      });
-    });
-
-    it('should throw 400 when password is missing', async () => {
-      await expect(authService.loginUser('alice', '')).rejects.toMatchObject({
-        statusCode: 400,
-        message: ERROR_STRINGS.InvalidCreds,
-      });
-    });
-
-    it('should throw 404 when user does not exist', async () => {
+    it('should throw 401 when user does not exist', async () => {
       (User.findOne as jest.Mock).mockResolvedValue(null);
 
       await expect(
         authService.loginUser('ghost', 'password')
       ).rejects.toMatchObject({
-        statusCode: 404,
+        statusCode: 401,
+        message: ERROR_STRINGS.InvalidCreds,
+      });
+    });
+
+    it('should throw 401 when user has no password (OAuth-only user)', async () => {
+      (User.findOne as jest.Mock).mockResolvedValue({
+        _id: 'user-1',
+        username: 'alice',
+        // no password field
+      });
+
+      await expect(
+        authService.loginUser('alice', 'anything')
+      ).rejects.toMatchObject({
+        statusCode: 401,
         message: ERROR_STRINGS.InvalidCreds,
       });
     });
@@ -167,13 +172,27 @@ describe('authService', () => {
       expect(utilities.hashData).toHaveBeenCalledWith('newPassword123');
     });
 
-    it('should throw 404 when user does not exist', async () => {
+    it('should throw 401 when user does not exist', async () => {
       (User.findOne as jest.Mock).mockResolvedValue(null);
 
       await expect(
         authService.changeUserPassword('ghost', 'answer', 'newPw')
       ).rejects.toMatchObject({
-        statusCode: 404,
+        statusCode: 401,
+        message: ERROR_STRINGS.InvalidCreds,
+      });
+    });
+
+    it('should throw 401 when user has no security answer (OAuth-only user)', async () => {
+      (User.findOne as jest.Mock).mockResolvedValue({
+        _id: 'user-1',
+        // no securityAnswer
+      });
+
+      await expect(
+        authService.changeUserPassword('alice', 'anything', 'newPw')
+      ).rejects.toMatchObject({
+        statusCode: 401,
         message: ERROR_STRINGS.InvalidCreds,
       });
     });
@@ -208,7 +227,7 @@ describe('authService', () => {
     };
 
     it('should return new tokens when refresh token is valid', async () => {
-      (RefreshToken.findOne as jest.Mock).mockResolvedValue({ token: 'old-refresh' });
+      (RefreshToken.findOne as jest.Mock).mockResolvedValue({ tokenHash: 'hashed:old-refresh' });
       (jwt.verify as jest.Mock).mockReturnValue({ id: 'user-1' });
       (User.findById as jest.Mock).mockResolvedValue(mockUser);
       (RefreshToken.deleteOne as jest.Mock).mockResolvedValue({ deletedCount: 1 });
@@ -223,8 +242,11 @@ describe('authService', () => {
         accessToken: 'new-access-token',
         refreshToken: 'new-refresh-token',
       });
-      expect(RefreshToken.deleteOne).toHaveBeenCalledWith({ token: 'old-refresh' });
-      expect(RefreshToken.create).toHaveBeenCalledTimes(1);
+      expect(RefreshToken.findOne).toHaveBeenCalledWith({ tokenHash: 'hashed:old-refresh' });
+      expect(RefreshToken.deleteOne).toHaveBeenCalledWith({ tokenHash: 'hashed:old-refresh' });
+      expect(RefreshToken.create).toHaveBeenCalledWith(
+        expect.objectContaining({ tokenHash: 'hashed:new-refresh-token' })
+      );
     });
 
     it('should throw 400 when no refresh token is provided', async () => {
@@ -244,7 +266,7 @@ describe('authService', () => {
     });
 
     it('should throw 401 and delete token when JWT verify fails', async () => {
-      (RefreshToken.findOne as jest.Mock).mockResolvedValue({ token: 'expired' });
+      (RefreshToken.findOne as jest.Mock).mockResolvedValue({ tokenHash: 'hashed:expired' });
       (jwt.verify as jest.Mock).mockImplementation(() => {
         throw new Error('jwt expired');
       });
@@ -255,35 +277,41 @@ describe('authService', () => {
         message: ERROR_STRINGS.InvalidToken,
       });
 
-      expect(RefreshToken.deleteOne).toHaveBeenCalledWith({ token: 'expired' });
+      expect(RefreshToken.deleteOne).toHaveBeenCalledWith({ tokenHash: 'hashed:expired' });
     });
 
-    it('should throw 404 when user from token does not exist', async () => {
-      (RefreshToken.findOne as jest.Mock).mockResolvedValue({ token: 'valid' });
+    it('should throw 401 (InvalidToken) when user from token does not exist', async () => {
+      (RefreshToken.findOne as jest.Mock).mockResolvedValue({ tokenHash: 'hashed:valid' });
       (jwt.verify as jest.Mock).mockReturnValue({ id: 'ghost-user' });
       (User.findById as jest.Mock).mockResolvedValue(null);
 
       await expect(authService.refreshTokens('valid')).rejects.toMatchObject({
-        statusCode: 404,
-        message: ERROR_STRINGS.UserNotFound,
+        statusCode: 401,
+        message: ERROR_STRINGS.InvalidToken,
       });
     });
   });
 
   // ==================== logoutUser ====================
   describe('logoutUser', () => {
-    it('should delete the refresh token', async () => {
+    it('should delete the refresh token by hash', async () => {
       (RefreshToken.deleteOne as jest.Mock).mockResolvedValue({ deletedCount: 1 });
 
       await authService.logoutUser('some-refresh-token');
 
-      expect(RefreshToken.deleteOne).toHaveBeenCalledWith({ token: 'some-refresh-token' });
+      expect(RefreshToken.deleteOne).toHaveBeenCalledWith({ tokenHash: 'hashed:some-refresh-token' });
     });
 
     it('should not throw when token does not exist (idempotent)', async () => {
       (RefreshToken.deleteOne as jest.Mock).mockResolvedValue({ deletedCount: 0 });
 
       await expect(authService.logoutUser('non-existent')).resolves.toBeUndefined();
+    });
+
+    it('should be a no-op when no token is provided', async () => {
+      await authService.logoutUser('');
+
+      expect(RefreshToken.deleteOne).not.toHaveBeenCalled();
     });
   });
 });

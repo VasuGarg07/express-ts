@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { compareData, hashData } from '../../utils/utilities';
+import { compareData, hashData, hashToken } from '../../utils/utilities';
 import User from './userModel';
 import RefreshToken from './refreshTokenModel';
 import CONFIG from '../../config/config';
@@ -21,7 +21,7 @@ export const registerUser = async (
   securityAnswer: string
 ) => {
   const existing = await User.findOne({
-    $or: [{ username }, { email: username }],
+    $or: [{ username }, { email: username }, { email }],
   });
 
   if (existing) {
@@ -43,13 +43,11 @@ export const registerUser = async (
 };
 
 export const loginUser = async (username: string, password: string) => {
-  if (!username || !password) {
-    throw new ApiError(400, ERROR_STRINGS.InvalidCreds);
-  }
+  const user = await User.findOne({ $or: [{ username }, { email: username }] });
 
-  const user = await User.findOne({ $or: [{ username }, { email: username }]});
-  if (!user) {
-    throw new ApiError(404, ERROR_STRINGS.InvalidCreds);
+  // Combine "user not found" and "wrong password" into one response to prevent enumeration
+  if (!user || !user.password) {
+    throw new ApiError(401, ERROR_STRINGS.InvalidCreds);
   }
 
   const isPasswordValid = await compareData(password, user.password);
@@ -69,7 +67,7 @@ export const loginUser = async (username: string, password: string) => {
   );
 
   await RefreshToken.create({
-    token: refreshToken,
+    tokenHash: hashToken(refreshToken),
     userId: user._id,
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
   });
@@ -85,8 +83,10 @@ export const changeUserPassword = async (
   const user = await User.findOne({
     $or: [{ username }, { email: username }],
   });
-  if (!user) {
-    throw new ApiError(404, ERROR_STRINGS.InvalidCreds);
+
+  // OAuth-only users have no securityAnswer; treat the same as not found
+  if (!user || !user.securityAnswer) {
+    throw new ApiError(401, ERROR_STRINGS.InvalidCreds);
   }
 
   const isAnswerValid = await compareData(securityAnswer, user.securityAnswer);
@@ -103,7 +103,9 @@ export const refreshTokens = async (refreshToken: string) => {
     throw new ApiError(400, ERROR_STRINGS.NoRefToken);
   }
 
-  const storedToken = await RefreshToken.findOne({ token: refreshToken });
+  const incomingHash = hashToken(refreshToken);
+
+  const storedToken = await RefreshToken.findOne({ tokenHash: incomingHash });
   if (!storedToken) {
     throw new ApiError(401, ERROR_STRINGS.InvalidToken);
   }
@@ -112,16 +114,16 @@ export const refreshTokens = async (refreshToken: string) => {
   try {
     decoded = jwt.verify(refreshToken, secretKey);
   } catch {
-    await RefreshToken.deleteOne({ token: refreshToken });
+    await RefreshToken.deleteOne({ tokenHash: incomingHash });
     throw new ApiError(401, ERROR_STRINGS.InvalidToken);
   }
 
   const user = await User.findById(decoded.id);
   if (!user) {
-    throw new ApiError(404, ERROR_STRINGS.UserNotFound);
+    throw new ApiError(401, ERROR_STRINGS.InvalidToken);
   }
 
-  await RefreshToken.deleteOne({ token: refreshToken });
+  await RefreshToken.deleteOne({ tokenHash: incomingHash });
 
   const newAccessToken = jwt.sign(
     { id: user._id, username: user.username, email: user.email },
@@ -135,7 +137,7 @@ export const refreshTokens = async (refreshToken: string) => {
   );
 
   await RefreshToken.create({
-    token: newRefreshToken,
+    tokenHash: hashToken(newRefreshToken),
     userId: user._id,
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
   });
@@ -144,5 +146,6 @@ export const refreshTokens = async (refreshToken: string) => {
 };
 
 export const logoutUser = async (refreshToken: string) => {
-  await RefreshToken.deleteOne({ token: refreshToken });
+  if (!refreshToken) return;
+  await RefreshToken.deleteOne({ tokenHash: hashToken(refreshToken) });
 };
