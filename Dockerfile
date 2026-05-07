@@ -21,8 +21,8 @@ COPY . .
 # Node.js can't run TypeScript directly, so this step is required
 RUN npm run build
 
-# Backend will listen on port 5000
-EXPOSE 5000
+# Backend will listen on port 3000
+EXPOSE 3000
 
 # Run the compiled JavaScript output
 # Make sure this path matches your tsconfig outDir setting
