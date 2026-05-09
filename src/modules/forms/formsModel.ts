@@ -187,7 +187,6 @@ const formResponseSchema = new Schema<IFormResponse>(
 
 // Indexes for performance
 formSchema.index({ userId: 1, createdAt: -1 });
-formSchema.index({ shareUrl: 1 });
 formSchema.index({ isActive: 1 });
 
 formResponseSchema.index({ formId: 1, submittedAt: -1 });
