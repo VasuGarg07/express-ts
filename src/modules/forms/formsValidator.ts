@@ -253,6 +253,6 @@ export const formResponseSchema = z.object({
         message: 'At least one response is required',
         path: ['responses']
     }),
-    ipAddress: z.string().ip().optional(),
+    ipAddress: z.union([z.ipv4(), z.ipv6()]).optional(),
     userAgent: z.string().max(500).optional()
 });
