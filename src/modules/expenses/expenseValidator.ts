@@ -8,6 +8,3 @@ export const expenseSchema = z.object({
     date: z.number().int().positive("Date must be a valid Unix timestamp"),
     description: z.string().optional()
 });
-
-// For PUT or PATCH (partial updates):
-export const expenseUpdateSchema = expenseSchema.partial();

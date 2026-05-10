@@ -1,44 +1,92 @@
-import { Applicant } from '../models/applicantModel';
-import { Job } from '../models/jobModel';
+import { eq, and, desc } from 'drizzle-orm';
+import { db } from '../../../config/postgres';
+import { jobs, jobApplications, applicants } from '../schema';
 import { ApiError } from '../../../utils/ApiError';
-import { validateObjectId } from '../../../utils/utilities';
 import { JobInput, JobUpdateInput, ApplicationStatusInput } from '../validators/jobValidators';
 
+const validateNumericId = (id: string, message: string) => {
+  if (!id || isNaN(Number(id))) {
+    throw new ApiError(400, message);
+  }
+};
+
 export const fetchMyJobs = async (profileId: string) => {
-  const jobs = await Job.find({ postedBy: profileId })
-    .select('-applications')
-    .sort({ createdAt: -1 })
-  return { jobs, count: jobs.length };
+  const jobsList = await db
+    .select({
+      id: jobs.id,
+      title: jobs.title,
+      location: jobs.location,
+      jobLevel: jobs.jobLevel,
+      vacancies: jobs.vacancies,
+      employmentType: jobs.employmentType,
+      shiftType: jobs.shiftType,
+      salaryRange: jobs.salaryRange,
+      experienceRequired: jobs.experienceRequired,
+      description: jobs.description,
+      requirements: jobs.requirements,
+      responsibilities: jobs.responsibilities,
+      benefits: jobs.benefits,
+      skillsRequired: jobs.skillsRequired,
+      tags: jobs.tags,
+      isArchived: jobs.isArchived,
+      createdAt: jobs.createdAt,
+      updatedAt: jobs.updatedAt,
+    })
+    .from(jobs)
+    .where(eq(jobs.postedBy, Number(profileId)))
+    .orderBy(desc(jobs.createdAt));
+
+  return { jobs: jobsList, count: jobsList.length };
 };
 
 export const createJob = async (profileId: string, data: Partial<JobInput>) => {
-  const job = new Job({ postedBy: profileId, ...data });
-  await job.save();
+  const [job] = await db
+    .insert(jobs)
+    .values({ postedBy: Number(profileId), ...data } as typeof jobs.$inferInsert)
+    .returning();
   return job;
 };
 
 export const fetchJobWithApplications = async (profileId: string, jobId: string) => {
-  validateObjectId(jobId, 'Invalid job ID');
+  validateNumericId(jobId, 'Invalid job ID');
 
-  const job = await Job.findOne({ _id: jobId, postedBy: profileId }).populate({
-    path: 'applications.applicantId',
-    select: 'fullName contactEmail phoneNumber photoUrl resumeURL socialLinks',
-  });
+  const [job] = await db
+    .select()
+    .from(jobs)
+    .where(and(eq(jobs.id, Number(jobId)), eq(jobs.postedBy, Number(profileId))));
 
   if (!job) {
     throw new ApiError(404, 'Job not found or unauthorized');
   }
-  return job;
+
+  const applications = await db
+    .select({
+      applicantId: jobApplications.applicantId,
+      coverLetter: jobApplications.coverLetter,
+      status: jobApplications.status,
+      appliedAt: jobApplications.appliedAt,
+      fullName: applicants.fullName,
+      contactEmail: applicants.contactEmail,
+      phoneNumber: applicants.phoneNumber,
+      photoUrl: applicants.photoUrl,
+      resumeURL: applicants.resumeURL,
+      socialLinks: applicants.socialLinks,
+    })
+    .from(jobApplications)
+    .leftJoin(applicants, eq(jobApplications.applicantId, applicants.id))
+    .where(eq(jobApplications.jobId, Number(jobId)));
+
+  return { ...job, applications };
 };
 
 export const editJob = async (profileId: string, jobId: string, data: JobUpdateInput) => {
-  validateObjectId(jobId, 'Invalid job ID');
+  validateNumericId(jobId, 'Invalid job ID');
 
-  const job = await Job.findOneAndUpdate(
-    { _id: jobId, postedBy: profileId },
-    data,
-    { new: true, runValidators: true }
-  );
+  const [job] = await db
+    .update(jobs)
+    .set({ ...data, updatedAt: new Date() } as Partial<typeof jobs.$inferInsert>)
+    .where(and(eq(jobs.id, Number(jobId)), eq(jobs.postedBy, Number(profileId))))
+    .returning();
 
   if (!job) {
     throw new ApiError(404, 'Job not found or unauthorized');
@@ -47,36 +95,34 @@ export const editJob = async (profileId: string, jobId: string, data: JobUpdateI
 };
 
 export const removeJob = async (profileId: string, jobId: string) => {
-  validateObjectId(jobId, 'Invalid job ID');
+  validateNumericId(jobId, 'Invalid job ID');
 
-  const job = await Job.findOneAndDelete({ _id: jobId, postedBy: profileId });
+  const [job] = await db
+    .delete(jobs)
+    .where(and(eq(jobs.id, Number(jobId)), eq(jobs.postedBy, Number(profileId))))
+    .returning();
+
   if (!job) {
     throw new ApiError(404, 'Job not found or unauthorized');
   }
-
-  await Applicant.updateMany(
-    {},
-    {
-      $pull: {
-        savedJobs: job._id,
-        applications: { jobId: job._id },
-      },
-    }
-  );
 };
 
 export const toggleArchive = async (profileId: string, jobId: string) => {
-  validateObjectId(jobId, 'Invalid job ID');
+  validateNumericId(jobId, 'Invalid job ID');
 
-  const job = await Job.findOne({ _id: jobId, postedBy: profileId });
+  const [job] = await db
+    .select({ id: jobs.id, isArchived: jobs.isArchived })
+    .from(jobs)
+    .where(and(eq(jobs.id, Number(jobId)), eq(jobs.postedBy, Number(profileId))));
+
   if (!job) {
     throw new ApiError(404, 'Job not found or unauthorized');
   }
 
-  job.isArchived = !job.isArchived;
-  await job.save();
+  const isArchived = !job.isArchived;
+  await db.update(jobs).set({ isArchived, updatedAt: new Date() }).where(eq(jobs.id, job.id));
 
-  return { isArchived: job.isArchived, status: job.isArchived ? 'archived' : 'unarchived' };
+  return { isArchived, status: isArchived ? 'archived' : 'unarchived' };
 };
 
 export const updateApplicationStatus = async (
@@ -84,29 +130,27 @@ export const updateApplicationStatus = async (
   jobId: string,
   data: ApplicationStatusInput
 ) => {
-  validateObjectId(jobId, 'Invalid job ID');
-  validateObjectId(data.applicantId, 'Invalid applicant ID');
+  validateNumericId(jobId, 'Invalid job ID');
+  validateNumericId(data.applicantId, 'Invalid applicant ID');
 
-  const job = await Job.findOne({ _id: jobId, postedBy: profileId });
+  const [job] = await db
+    .select({ id: jobs.id })
+    .from(jobs)
+    .where(and(eq(jobs.id, Number(jobId)), eq(jobs.postedBy, Number(profileId))));
+
   if (!job) {
     throw new ApiError(404, 'Job not found or unauthorized');
   }
 
-  const application = job.applications.find(
-    app => app.applicantId.toString() === data.applicantId
-  );
+  const [application] = await db
+    .update(jobApplications)
+    .set({ status: data.status })
+    .where(and(eq(jobApplications.jobId, Number(jobId)), eq(jobApplications.applicantId, Number(data.applicantId))))
+    .returning();
+
   if (!application) {
     throw new ApiError(404, 'Application not found');
   }
-
-  application.status = data.status;
-  await job.save();
-
-  // Keep the applicant's copy in sync
-  await Applicant.updateOne(
-    { _id: data.applicantId, 'applications.jobId': jobId },
-    { $set: { 'applications.$.status': data.status } }
-  );
 
   return { applicantId: data.applicantId, status: data.status };
 };

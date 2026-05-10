@@ -1,9 +1,7 @@
-import mongoose from 'mongoose';
-import { Applicant } from '../models/applicantModel';
-import { Employer } from '../models/employerModel';
-import { Job } from '../models/jobModel';
+import { eq, and, ilike, desc, count, sql } from 'drizzle-orm';
+import { db } from '../../../config/postgres';
+import { applicants, employers, jobs, jobApplications, savedJobs } from '../schema';
 import { ApiError } from '../../../utils/ApiError';
-import { validateObjectId } from '../../../utils/utilities';
 
 interface ListQuery {
   page?: string;
@@ -12,20 +10,10 @@ interface ListQuery {
   location?: string;
 }
 
-const getApplicantOrFail = async (profileId: string) => {
-  const applicant = await Applicant.findById(profileId);
-  if (!applicant) {
-    throw new ApiError(404, 'Applicant profile not found');
+const validateNumericId = (id: string, message: string) => {
+  if (!id || isNaN(Number(id))) {
+    throw new ApiError(400, message);
   }
-  return applicant;
-};
-
-const getActiveJobOrFail = async (id: string) => {
-  const job = await Job.findOne({ _id: id, isArchived: false });
-  if (!job) {
-    throw new ApiError(404, 'Job not found');
-  }
-  return job;
 };
 
 export const fetchJobs = async (query: ListQuery) => {
@@ -33,171 +21,175 @@ export const fetchJobs = async (query: ListQuery) => {
   const limit = parseInt(query.limit || '10');
   const skip = (page - 1) * limit;
 
-  const filter: Record<string, unknown> = { isArchived: false };
-  if (query.search) filter.title = { $regex: query.search, $options: 'i' };
-  if (query.location) filter.location = { $regex: query.location, $options: 'i' };
+  const conditions = [eq(jobs.isArchived, false)];
+  if (query.search) conditions.push(ilike(jobs.title, `%${query.search}%`));
+  if (query.location) conditions.push(ilike(jobs.location, `%${query.location}%`));
+  const whereClause = and(...conditions);
 
-  const jobs = await Job.aggregate([
-    { $match: filter },
-    {
-      $lookup: {
-        from: 'employers',
-        localField: 'postedBy',
-        foreignField: '_id',
-        as: 'employer',
-      },
-    },
-    { $unwind: '$employer' },
-    {
-      $addFields: {
-        applicationCount: { $size: '$applications' },
-        companyName: '$employer.companyName',
-        logoURL: '$employer.logoURL',
-      },
-    },
-    {
-      $project: {
-        id: '$_id',
-        title: 1,
-        location: 1,
-        employmentType: 1,
-        salaryRange: 1,
-        applicationCount: 1,
-        companyName: 1,
-        logoURL: 1,
-        createdAt: 1,
-        _id: 0,
-      },
-    },
-    { $sort: { createdAt: -1 } },
-    { $skip: skip },
-    { $limit: limit },
-  ]);
+  const jobRows = await db
+    .select({
+      id: jobs.id,
+      title: jobs.title,
+      location: jobs.location,
+      employmentType: jobs.employmentType,
+      salaryRange: jobs.salaryRange,
+      createdAt: jobs.createdAt,
+      companyName: employers.companyName,
+      logoURL: employers.logoURL,
+      applicationCount: sql<number>`(select count(*)::int from ${jobApplications} where ${jobApplications.jobId} = ${jobs.id})`,
+    })
+    .from(jobs)
+    .leftJoin(employers, eq(jobs.postedBy, employers.id))
+    .where(whereClause)
+    .orderBy(desc(jobs.createdAt))
+    .limit(limit)
+    .offset(skip);
 
-  const total = await Job.countDocuments(filter);
+  const [{ total }] = await db.select({ total: count() }).from(jobs).where(whereClause);
 
   return {
-    jobs,
+    jobs: jobRows,
     pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
   };
 };
 
 export const fetchJobDetails = async (id: string) => {
-  validateObjectId(id, 'Invalid job ID');
+  validateNumericId(id, 'Invalid job ID');
 
-  const result = await Job.aggregate([
-    { $match: { _id: new mongoose.Types.ObjectId(id), isArchived: false } },
-    {
-      $lookup: {
-        from: 'employers',
-        localField: 'postedBy',
-        foreignField: '_id',
-        as: 'employer',
-      },
-    },
-    { $unwind: '$employer' },
-    {
-      $addFields: {
-        applicationCount: { $size: '$applications' },
-        companyName: '$employer.companyName',
-        logoURL: '$employer.logoURL',
-        id: '$_id',
-      },
-    },
-    { $project: { applications: 0, employer: 0, __v: 0, _id: 0, postedBy: 0 } },
-  ]);
+  const [row] = await db
+    .select({
+      id: jobs.id,
+      title: jobs.title,
+      location: jobs.location,
+      jobLevel: jobs.jobLevel,
+      vacancies: jobs.vacancies,
+      employmentType: jobs.employmentType,
+      shiftType: jobs.shiftType,
+      salaryRange: jobs.salaryRange,
+      experienceRequired: jobs.experienceRequired,
+      description: jobs.description,
+      requirements: jobs.requirements,
+      responsibilities: jobs.responsibilities,
+      benefits: jobs.benefits,
+      skillsRequired: jobs.skillsRequired,
+      tags: jobs.tags,
+      isArchived: jobs.isArchived,
+      createdAt: jobs.createdAt,
+      updatedAt: jobs.updatedAt,
+      companyName: employers.companyName,
+      logoURL: employers.logoURL,
+      applicationCount: sql<number>`(select count(*)::int from ${jobApplications} where ${jobApplications.jobId} = ${jobs.id})`,
+    })
+    .from(jobs)
+    .leftJoin(employers, eq(jobs.postedBy, employers.id))
+    .where(and(eq(jobs.id, Number(id)), eq(jobs.isArchived, false)));
 
-  if (!result.length) {
+  if (!row) {
     throw new ApiError(404, 'Job not found');
   }
-  return result[0];
+  return row;
 };
 
 export const applyForJob = async (profileId: string, jobId: string, coverLetter: string) => {
-  validateObjectId(jobId, 'Invalid job ID');
+  validateNumericId(jobId, 'Invalid job ID');
 
-  const job = await getActiveJobOrFail(jobId);
-  const applicant = await getApplicantOrFail(profileId);
-
-  const alreadyApplied = applicant.applications.some(app => app.jobId.toString() === jobId);
-  if (alreadyApplied) {
-    throw new ApiError(400, 'Already applied to this job');
+  try {
+    await db.insert(jobApplications).values({
+      jobId: Number(jobId),
+      applicantId: Number(profileId),
+      coverLetter,
+    });
+  } catch (error: any) {
+    if (error?.code === '23505') {
+      throw new ApiError(400, 'Already applied to this job');
+    }
+    throw error;
   }
-
-  const jobObjectId = new mongoose.Types.ObjectId(jobId);
-  const profileObjectId = new mongoose.Types.ObjectId(profileId);
-  const now = new Date();
-
-  applicant.applications.push({ jobId: jobObjectId, coverLetter, appliedAt: now });
-  job.applications.push({ applicantId: profileObjectId, coverLetter, appliedAt: now });
-
-  await Promise.all([applicant.save(), job.save()]);
 };
 
 export const fetchMyApplications = async (profileId: string) => {
-  const applicant = await Applicant.findById(profileId).populate({
-    path: 'applications.jobId',
-    select: 'title location employmentType salaryRange postedBy',
-    populate: { path: 'postedBy', select: 'companyName logoURL' },
-  });
+  const id = Number(profileId);
 
+  const [applicant] = await db.select({ id: applicants.id }).from(applicants).where(eq(applicants.id, id));
   if (!applicant) {
     throw new ApiError(404, 'Applicant profile not found');
   }
 
-  return applicant.applications.map((app: any) => ({
-    id: app.jobId._id,
-    title: app.jobId.title,
-    location: app.jobId.location,
-    employmentType: app.jobId.employmentType,
-    salaryRange: app.jobId.salaryRange,
-    companyName: app.jobId.postedBy.companyName,
-    logoURL: app.jobId.postedBy.logoURL,
-    appliedAt: app.appliedAt.getTime(),
-    coverLetter: app.coverLetter,
-    status: app.status,
-  }));
+  const rows = await db
+    .select({
+      id: jobs.id,
+      title: jobs.title,
+      location: jobs.location,
+      employmentType: jobs.employmentType,
+      salaryRange: jobs.salaryRange,
+      companyName: employers.companyName,
+      logoURL: employers.logoURL,
+      appliedAt: jobApplications.appliedAt,
+      coverLetter: jobApplications.coverLetter,
+      status: jobApplications.status,
+    })
+    .from(jobApplications)
+    .leftJoin(jobs, eq(jobApplications.jobId, jobs.id))
+    .leftJoin(employers, eq(jobs.postedBy, employers.id))
+    .where(eq(jobApplications.applicantId, id));
+
+  return rows.map((row) => ({ ...row, appliedAt: row.appliedAt.getTime() }));
 };
 
 export const toggleSavedJob = async (profileId: string, jobId: string) => {
-  validateObjectId(jobId, 'Invalid job ID');
-  await getActiveJobOrFail(jobId);
-  const applicant = await getApplicantOrFail(profileId);
+  validateNumericId(jobId, 'Invalid job ID');
 
-  const isSaved = applicant.savedJobs.some(savedId => savedId.toString() === jobId);
+  const jId = Number(jobId);
+  const pId = Number(profileId);
 
-  if (isSaved) {
-    applicant.savedJobs = applicant.savedJobs.filter(savedId => savedId.toString() !== jobId);
-    await applicant.save();
+  const [job] = await db.select({ id: jobs.id }).from(jobs).where(and(eq(jobs.id, jId), eq(jobs.isArchived, false)));
+  if (!job) {
+    throw new ApiError(404, 'Job not found');
+  }
+
+  const [applicant] = await db.select({ id: applicants.id }).from(applicants).where(eq(applicants.id, pId));
+  if (!applicant) {
+    throw new ApiError(404, 'Applicant profile not found');
+  }
+
+  const [existing] = await db
+    .select()
+    .from(savedJobs)
+    .where(and(eq(savedJobs.applicantId, pId), eq(savedJobs.jobId, jId)));
+
+  if (existing) {
+    await db.delete(savedJobs).where(and(eq(savedJobs.applicantId, pId), eq(savedJobs.jobId, jId)));
     return { message: 'Job removed from saved', saved: false };
   }
 
-  applicant.savedJobs.push(new mongoose.Types.ObjectId(jobId));
-  await applicant.save();
+  await db.insert(savedJobs).values({ applicantId: pId, jobId: jId });
   return { message: 'Job saved successfully', saved: true };
 };
 
 export const fetchSavedJobs = async (profileId: string) => {
-  const applicant = await Applicant.findById(profileId).populate({
-    path: 'savedJobs',
-    match: { isArchived: false },
-    select: 'title location employmentType salaryRange postedBy',
-    populate: { path: 'postedBy', select: 'companyName logoURL' },
-  });
+  const id = Number(profileId);
 
+  const [applicant] = await db.select({ id: applicants.id }).from(applicants).where(eq(applicants.id, id));
   if (!applicant) {
     throw new ApiError(404, 'Applicant profile not found');
   }
 
-  return applicant.savedJobs.map((job: any) => ({
-    id: job._id,
-    title: job.title,
-    location: job.location,
-    employmentType: job.employmentType,
-    salaryRange: job.salaryRange,
-    companyName: job.postedBy.companyName,
-    logoURL: job.postedBy.logoURL,
-  }));
+  const rows = await db
+    .select({
+      id: jobs.id,
+      title: jobs.title,
+      location: jobs.location,
+      employmentType: jobs.employmentType,
+      salaryRange: jobs.salaryRange,
+      companyName: employers.companyName,
+      logoURL: employers.logoURL,
+    })
+    .from(savedJobs)
+    .leftJoin(jobs, eq(savedJobs.jobId, jobs.id))
+    .leftJoin(employers, eq(jobs.postedBy, employers.id))
+    .where(and(eq(savedJobs.applicantId, id), eq(jobs.isArchived, false)));
+
+  return rows;
 };
 
 export const fetchCompanies = async (query: ListQuery) => {
@@ -205,71 +197,52 @@ export const fetchCompanies = async (query: ListQuery) => {
   const limit = parseInt(query.limit || '10');
   const skip = (page - 1) * limit;
 
-  const filter: Record<string, unknown> = {};
-  if (query.search) filter.companyName = { $regex: query.search, $options: 'i' };
+  const conditions = [];
+  if (query.search) conditions.push(ilike(employers.companyName, `%${query.search}%`));
+  const whereClause = conditions.length ? and(...conditions) : undefined;
 
-  const companies = await Employer.aggregate([
-    { $match: filter },
-    {
-      $lookup: {
-        from: 'jobs',
-        let: { employerId: '$_id' },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $and: [
-                  { $eq: ['$postedBy', '$$employerId'] },
-                  { $eq: ['$isArchived', false] },
-                ],
-              },
-            },
-          },
-        ],
-        as: 'jobs',
-      },
-    },
-    { $addFields: { activeJobsCount: { $size: '$jobs' } } },
-    {
-      $project: {
-        id: '$_id',
-        companyName: 1,
-        logoURL: 1,
-        address: 1,
-        activeJobsCount: 1,
-        _id: 0,
-      },
-    },
-    { $skip: skip },
-    { $limit: limit },
-  ]);
+  const rows = await db
+    .select({
+      id: employers.id,
+      companyName: employers.companyName,
+      logoURL: employers.logoURL,
+      address: employers.address,
+      activeJobsCount: sql<number>`(select count(*)::int from ${jobs} where ${jobs.postedBy} = ${employers.id} and ${jobs.isArchived} = false)`,
+    })
+    .from(employers)
+    .where(whereClause)
+    .limit(limit)
+    .offset(skip);
 
-  const total = await Employer.countDocuments(filter);
+  const [{ total }] = await db.select({ total: count() }).from(employers).where(whereClause);
 
   return {
-    companies,
+    companies: rows,
     pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
   };
 };
 
 export const fetchCompanyDetails = async (id: string) => {
-  validateObjectId(id, 'Invalid company ID');
+  validateNumericId(id, 'Invalid company ID');
 
-  const company = await Employer.findById(id);
+  const [company] = await db.select().from(employers).where(eq(employers.id, Number(id)));
   if (!company) {
     throw new ApiError(404, 'Company not found');
   }
 
-  const jobs = await Job.find({ postedBy: id, isArchived: false })
-    .select('title location employmentType salaryRange createdAt')
-    .lean();
+  const jobRows = await db
+    .select({
+      id: jobs.id,
+      title: jobs.title,
+      location: jobs.location,
+      employmentType: jobs.employmentType,
+      salaryRange: jobs.salaryRange,
+    })
+    .from(jobs)
+    .where(and(eq(jobs.postedBy, Number(id)), eq(jobs.isArchived, false)));
 
-  const formattedJobs = jobs.map(job => ({
-    id: job._id,
-    title: job.title,
-    location: job.location,
-    employmentType: job.employmentType,
-    salaryRange: job.salaryRange,
+  const formattedJobs = jobRows.map((job) => ({
+    ...job,
     companyName: company.companyName,
     logoURL: company.logoURL,
   }));

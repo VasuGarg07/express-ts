@@ -1,136 +1,201 @@
 import * as expenseService from '../../src/modules/expenses/expenseService';
-import Expense from '../../src/modules/expenses/expenseModel';
+import { db } from '../../src/config/postgres';
 import { ERROR_STRINGS } from '../../src/utils/response.string';
 
-jest.mock('../../src/modules/expenses/expenseModel');
+// expenseService only ever touches `db` through drizzle's chainable query builder
+// (insert/update/delete/select -> values/set/where/from -> returning). Mock that
+// chain shape directly instead of the underlying pg driver, and control the
+// resolved value per call via mockResolvedValueOnce on the terminal method.
+jest.mock('../../src/config/postgres', () => {
+  const mockReturning = jest.fn();
+  const mockSelectWhere = jest.fn();
+
+  const mockValues = jest.fn(() => ({ returning: mockReturning }));
+  const mockSet = jest.fn(() => ({ where: jest.fn(() => ({ returning: mockReturning })) }));
+  const mockDeleteWhere = jest.fn(() => ({ returning: mockReturning }));
+  const mockFrom = jest.fn(() => ({ where: mockSelectWhere }));
+
+  return {
+    __esModule: true,
+    db: {
+      insert: jest.fn(() => ({ values: mockValues })),
+      update: jest.fn(() => ({ set: mockSet })),
+      delete: jest.fn(() => ({ where: mockDeleteWhere })),
+      select: jest.fn(() => ({ from: mockFrom })),
+    },
+    __mocks: { mockReturning, mockSelectWhere, mockValues, mockSet, mockDeleteWhere, mockFrom },
+  };
+});
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { __mocks } = require('../../src/config/postgres');
+const { mockReturning, mockSelectWhere, mockValues, mockSet, mockDeleteWhere, mockFrom } = __mocks;
 
 describe('expenseService', () => {
+  const VALID_USER_ID = '507f1f77bcf86cd799439011';
+  const OTHER_USER_ID = '507f191e810c19729de860ea';
+  const INVALID_USER_ID = 'not-a-valid-object-id';
 
   const mockTxnData = {
     title: 'Coffee',
     amount: 5.5,
     type: 'expense',
     category: 'food',
-    date: new Date('2024-01-01'),
+    date: 1704067200,
+    description: 'Morning coffee',
+  };
+
+  // rows coming back from drizzle are already camelCased per the schema's JS field
+  // names; amount still arrives as a string since pg returns NUMERIC as text.
+  const dbRow = {
+    id: 1,
+    userId: VALID_USER_ID,
+    title: 'Coffee',
+    amount: '5.50',
+    type: 'expense',
+    category: 'food',
+    date: 1704067200,
     description: 'Morning coffee',
   };
 
   // ==================== createTransaction ====================
   describe('createTransaction', () => {
-    it('should create and save a new transaction', async () => {
-      const mockSave = jest.fn().mockResolvedValue({});
-      (Expense as any).mockImplementation((data: any) => ({ ...data, save: mockSave }));
+    it('should insert and return the mapped transaction', async () => {
+      mockReturning.mockResolvedValueOnce([dbRow]);
 
-      const result = await expenseService.createTransaction('user-1', mockTxnData);
+      const result = await expenseService.createTransaction(VALID_USER_ID, mockTxnData as any);
 
-      expect(result).toMatchObject({ userId: 'user-1', ...mockTxnData });
-      expect(mockSave).toHaveBeenCalled();
+      expect(db.insert).toHaveBeenCalled();
+      expect(mockValues).toHaveBeenCalledWith({ userId: VALID_USER_ID, ...mockTxnData });
+      expect(result).toMatchObject({ userId: VALID_USER_ID, title: 'Coffee', amount: '5.50', date: 1704067200 });
+    });
+
+    it('should throw 400 when userId is not a valid ObjectId', async () => {
+      await expect(
+        expenseService.createTransaction(INVALID_USER_ID, mockTxnData as any)
+      ).rejects.toMatchObject({ statusCode: 400, message: ERROR_STRINGS.InvalidUserId });
+      expect(db.insert).not.toHaveBeenCalled();
     });
   });
 
   // ==================== editTransaction ====================
   describe('editTransaction', () => {
-    it('should update transaction when found', async () => {
-      const updated = { _id: 'txn-1', ...mockTxnData };
-      (Expense.findByIdAndUpdate as jest.Mock).mockResolvedValue(updated);
+    it('should update and return the transaction when found and owned by the user', async () => {
+      mockReturning.mockResolvedValueOnce([dbRow]);
 
-      const result = await expenseService.editTransaction('txn-1', mockTxnData);
+      const result = await expenseService.editTransaction('1', VALID_USER_ID, mockTxnData as any);
 
-      expect(result).toEqual(updated);
-      expect(Expense.findByIdAndUpdate).toHaveBeenCalledWith(
-        'txn-1',
-        mockTxnData,
-        { new: true }
-      );
+      expect(db.update).toHaveBeenCalled();
+      expect(mockSet).toHaveBeenCalledWith(mockTxnData);
+      expect(result).toMatchObject({ userId: VALID_USER_ID, title: 'Coffee' });
     });
 
     it('should throw 400 when txnId is empty', async () => {
       await expect(
-        expenseService.editTransaction('', mockTxnData)
-      ).rejects.toMatchObject({
-        statusCode: 400,
-        message: ERROR_STRINGS.InvalidTxnId,
-      });
+        expenseService.editTransaction('', VALID_USER_ID, mockTxnData as any)
+      ).rejects.toMatchObject({ statusCode: 400, message: ERROR_STRINGS.InvalidTxnId });
+      expect(db.update).not.toHaveBeenCalled();
     });
 
     it('should throw 400 when txnId is whitespace', async () => {
       await expect(
-        expenseService.editTransaction('   ', mockTxnData)
-      ).rejects.toMatchObject({
-        statusCode: 400,
-        message: ERROR_STRINGS.InvalidTxnId,
-      });
+        expenseService.editTransaction('   ', VALID_USER_ID, mockTxnData as any)
+      ).rejects.toMatchObject({ statusCode: 400, message: ERROR_STRINGS.InvalidTxnId });
+    });
+
+    it('should throw 400 when userId is not a valid ObjectId', async () => {
+      await expect(
+        expenseService.editTransaction('1', INVALID_USER_ID, mockTxnData as any)
+      ).rejects.toMatchObject({ statusCode: 400, message: ERROR_STRINGS.InvalidUserId });
+      expect(db.update).not.toHaveBeenCalled();
     });
 
     it('should throw 404 when transaction does not exist', async () => {
-      (Expense.findByIdAndUpdate as jest.Mock).mockResolvedValue(null);
+      mockReturning.mockResolvedValueOnce([]);
 
       await expect(
-        expenseService.editTransaction('missing-id', mockTxnData)
-      ).rejects.toMatchObject({
-        statusCode: 404,
-        message: ERROR_STRINGS.TransactionNotFound,
-      });
+        expenseService.editTransaction('999', VALID_USER_ID, mockTxnData as any)
+      ).rejects.toMatchObject({ statusCode: 404, message: ERROR_STRINGS.TransactionNotFound });
+    });
+
+    it('should throw 404 when the transaction belongs to a different user', async () => {
+      mockReturning.mockResolvedValueOnce([]);
+
+      await expect(
+        expenseService.editTransaction('1', OTHER_USER_ID, mockTxnData as any)
+      ).rejects.toMatchObject({ statusCode: 404, message: ERROR_STRINGS.TransactionNotFound });
     });
   });
 
   // ==================== removeTransaction ====================
   describe('removeTransaction', () => {
-    it('should delete transaction when found', async () => {
-      (Expense.findByIdAndDelete as jest.Mock).mockResolvedValue({ _id: 'txn-1' });
+    it('should delete the transaction when found and owned by the user', async () => {
+      mockReturning.mockResolvedValueOnce([{ id: 1 }]);
 
-      await expenseService.removeTransaction('txn-1');
+      await expenseService.removeTransaction('1', VALID_USER_ID);
 
-      expect(Expense.findByIdAndDelete).toHaveBeenCalledWith('txn-1');
+      expect(db.delete).toHaveBeenCalled();
+      expect(mockDeleteWhere).toHaveBeenCalled();
     });
 
     it('should throw 400 when txnId is empty', async () => {
-      await expect(expenseService.removeTransaction('')).rejects.toMatchObject({
+      await expect(expenseService.removeTransaction('', VALID_USER_ID)).rejects.toMatchObject({
         statusCode: 400,
         message: ERROR_STRINGS.InvalidTxnId,
       });
     });
 
-    it('should throw 400 when txnId is whitespace', async () => {
-      await expect(expenseService.removeTransaction('   ')).rejects.toMatchObject({
+    it('should throw 400 when userId is not a valid ObjectId', async () => {
+      await expect(expenseService.removeTransaction('1', INVALID_USER_ID)).rejects.toMatchObject({
         statusCode: 400,
-        message: ERROR_STRINGS.InvalidTxnId,
+        message: ERROR_STRINGS.InvalidUserId,
       });
+      expect(db.delete).not.toHaveBeenCalled();
     });
 
     it('should throw 404 when transaction does not exist', async () => {
-      (Expense.findByIdAndDelete as jest.Mock).mockResolvedValue(null);
+      mockReturning.mockResolvedValueOnce([]);
 
       await expect(
-        expenseService.removeTransaction('missing-id')
-      ).rejects.toMatchObject({
-        statusCode: 404,
-        message: ERROR_STRINGS.TransactionNotFound,
-      });
+        expenseService.removeTransaction('999', VALID_USER_ID)
+      ).rejects.toMatchObject({ statusCode: 404, message: ERROR_STRINGS.TransactionNotFound });
+    });
+
+    it('should throw 404 when the transaction belongs to a different user', async () => {
+      mockReturning.mockResolvedValueOnce([]);
+
+      await expect(
+        expenseService.removeTransaction('1', OTHER_USER_ID)
+      ).rejects.toMatchObject({ statusCode: 404, message: ERROR_STRINGS.TransactionNotFound });
     });
   });
 
   // ==================== fetchAllTransactions ====================
   describe('fetchAllTransactions', () => {
     it('should return all transactions for the user', async () => {
-      const transactions = [
-        { _id: '1', title: 'Coffee' },
-        { _id: '2', title: 'Lunch' },
-      ];
-      (Expense.find as jest.Mock).mockResolvedValue(transactions);
+      mockSelectWhere.mockResolvedValueOnce([dbRow]);
 
-      const result = await expenseService.fetchAllTransactions('user-1');
+      const result = await expenseService.fetchAllTransactions(VALID_USER_ID);
 
-      expect(result).toEqual(transactions);
-      expect(Expense.find).toHaveBeenCalledWith({ userId: 'user-1' });
+      expect(db.select).toHaveBeenCalled();
+      expect(mockFrom).toHaveBeenCalled();
+      expect(result).toEqual([expect.objectContaining({ userId: VALID_USER_ID, amount: '5.50' })]);
     });
 
     it('should return empty array when user has no transactions', async () => {
-      (Expense.find as jest.Mock).mockResolvedValue([]);
+      mockSelectWhere.mockResolvedValueOnce([]);
 
-      const result = await expenseService.fetchAllTransactions('user-1');
+      const result = await expenseService.fetchAllTransactions(VALID_USER_ID);
 
       expect(result).toEqual([]);
+    });
+
+    it('should throw 400 when userId is not a valid ObjectId', async () => {
+      await expect(expenseService.fetchAllTransactions(INVALID_USER_ID)).rejects.toMatchObject({
+        statusCode: 400,
+        message: ERROR_STRINGS.InvalidUserId,
+      });
+      expect(db.select).not.toHaveBeenCalled();
     });
   });
 
@@ -138,69 +203,72 @@ describe('expenseService', () => {
   describe('bulkImportTransactions', () => {
     it('should insert all transactions with userId attached', async () => {
       const inputData = [
-        { title: 'A', amount: 10 },
-        { title: 'B', amount: 20 },
+        { title: 'A', amount: 10, type: 'expense', category: 'misc', date: 1, description: '' },
+        { title: 'B', amount: 20, type: 'expense', category: 'misc', date: 2, description: '' },
       ];
-      const inserted = [
-        { _id: '1', userId: 'user-1', title: 'A', amount: 10 },
-        { _id: '2', userId: 'user-1', title: 'B', amount: 20 },
-      ];
-      (Expense.insertMany as jest.Mock).mockResolvedValue(inserted);
+      mockReturning.mockResolvedValueOnce([dbRow, dbRow]);
 
-      const result = await expenseService.bulkImportTransactions('user-1', inputData);
+      const result = await expenseService.bulkImportTransactions(VALID_USER_ID, inputData);
 
-      expect(result).toEqual(inserted);
-      expect(Expense.insertMany).toHaveBeenCalledWith([
-        { title: 'A', amount: 10, userId: 'user-1' },
-        { title: 'B', amount: 20, userId: 'user-1' },
-      ]);
+      expect(db.insert).toHaveBeenCalled();
+      expect(mockValues).toHaveBeenCalledWith(
+        inputData.map((t) => ({ userId: VALID_USER_ID, ...t }))
+      );
+      expect(result).toHaveLength(2);
     });
 
-    it('should accept empty array', async () => {
-      (Expense.insertMany as jest.Mock).mockResolvedValue([]);
-
-      const result = await expenseService.bulkImportTransactions('user-1', []);
+    it('should accept empty array without touching the db', async () => {
+      const result = await expenseService.bulkImportTransactions(VALID_USER_ID, []);
 
       expect(result).toEqual([]);
-      expect(Expense.insertMany).toHaveBeenCalledWith([]);
+      expect(db.insert).not.toHaveBeenCalled();
     });
 
     it('should throw 400 when input is not an array', async () => {
       await expect(
-        expenseService.bulkImportTransactions('user-1', { title: 'A' })
-      ).rejects.toMatchObject({
-        statusCode: 400,
-        message: 'Request body must be an array of transactions',
-      });
+        expenseService.bulkImportTransactions(VALID_USER_ID, { title: 'A' })
+      ).rejects.toMatchObject({ statusCode: 400, message: 'Request body must be an array of transactions' });
     });
 
     it('should throw 400 when input is null', async () => {
       await expect(
-        expenseService.bulkImportTransactions('user-1', null)
-      ).rejects.toMatchObject({
-        statusCode: 400,
-        message: 'Request body must be an array of transactions',
-      });
+        expenseService.bulkImportTransactions(VALID_USER_ID, null)
+      ).rejects.toMatchObject({ statusCode: 400, message: 'Request body must be an array of transactions' });
+    });
+
+    it('should throw 400 when userId is not a valid ObjectId', async () => {
+      await expect(
+        expenseService.bulkImportTransactions(INVALID_USER_ID, [])
+      ).rejects.toMatchObject({ statusCode: 400, message: ERROR_STRINGS.InvalidUserId });
+      expect(db.insert).not.toHaveBeenCalled();
     });
   });
 
   // ==================== clearTransactions ====================
   describe('clearTransactions', () => {
     it('should return deleted count when transactions exist', async () => {
-      (Expense.deleteMany as jest.Mock).mockResolvedValue({ deletedCount: 7 });
+      mockReturning.mockResolvedValueOnce([{ id: 1 }, { id: 2 }, { id: 3 }]);
 
-      const result = await expenseService.clearTransactions('user-1');
+      const result = await expenseService.clearTransactions(VALID_USER_ID);
 
-      expect(result).toBe(7);
-      expect(Expense.deleteMany).toHaveBeenCalledWith({ userId: 'user-1' });
+      expect(db.delete).toHaveBeenCalled();
+      expect(result).toBe(3);
     });
 
     it('should return 0 when user has no transactions', async () => {
-      (Expense.deleteMany as jest.Mock).mockResolvedValue({ deletedCount: 0 });
+      mockReturning.mockResolvedValueOnce([]);
 
-      const result = await expenseService.clearTransactions('user-1');
+      const result = await expenseService.clearTransactions(VALID_USER_ID);
 
       expect(result).toBe(0);
+    });
+
+    it('should throw 400 when userId is not a valid ObjectId', async () => {
+      await expect(expenseService.clearTransactions(INVALID_USER_ID)).rejects.toMatchObject({
+        statusCode: 400,
+        message: ERROR_STRINGS.InvalidUserId,
+      });
+      expect(db.delete).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,57 +1,102 @@
-import Expense, { IExpense } from './expenseModel';
+import { eq, and } from 'drizzle-orm';
+import { db } from '../../config/postgres';
+import { expenses } from './schema';
 import { ApiError } from '../../utils/ApiError';
 import { ERROR_STRINGS } from '../../utils/response.string';
+import { validateObjectId } from '../../utils/utilities';
 
-export const createTransaction = async (
-  userId: string,
-  data: { title: string; amount: number; type: string; category: string; date: Date; description?: string }
-) => {
-  const transaction = new Expense({ userId, ...data });
-  await transaction.save();
+interface TransactionInput {
+  title: string;
+  amount: number;
+  type: string;
+  category: string;
+  date: number;
+  description?: string;
+}
+
+export const createTransaction = async (userId: string, data: TransactionInput) => {
+  validateObjectId(userId, ERROR_STRINGS.InvalidUserId);
+
+  const [transaction] = await db
+    .insert(expenses)
+    .values({ userId, ...data })
+    .returning();
+
   return transaction;
 };
 
 export const editTransaction = async (
   txnId: string,
-  data: { title: string; amount: number; type: string; category: string; date: Date; description?: string }
+  userId: string,
+  data: TransactionInput
 ) => {
   if (!txnId || txnId.trim() === '') {
     throw new ApiError(400, ERROR_STRINGS.InvalidTxnId);
   }
+  validateObjectId(userId, ERROR_STRINGS.InvalidUserId);
 
-  const transaction = await Expense.findByIdAndUpdate(txnId, data, { new: true });
+  const id = Number(txnId);
+
+  const [transaction] = await db
+    .update(expenses)
+    .set(data)
+    .where(and(eq(expenses.id, id), eq(expenses.userId, userId)))
+    .returning();
+
   if (!transaction) {
     throw new ApiError(404, ERROR_STRINGS.TransactionNotFound);
   }
   return transaction;
 };
 
-export const removeTransaction = async (txnId: string) => {
+export const removeTransaction = async (txnId: string, userId: string) => {
   if (!txnId || txnId.trim() === '') {
     throw new ApiError(400, ERROR_STRINGS.InvalidTxnId);
   }
+  validateObjectId(userId, ERROR_STRINGS.InvalidUserId);
 
-  const transaction = await Expense.findByIdAndDelete(txnId);
-  if (!transaction) {
+  const id = Number(txnId);
+
+  const deleted = await db
+    .delete(expenses)
+    .where(and(eq(expenses.id, id), eq(expenses.userId, userId)))
+    .returning({ id: expenses.id });
+
+  if (deleted.length === 0) {
     throw new ApiError(404, ERROR_STRINGS.TransactionNotFound);
   }
 };
 
 export const fetchAllTransactions = async (userId: string) => {
-  const transactions = await Expense.find({ userId });
-  return transactions;
+  validateObjectId(userId, ERROR_STRINGS.InvalidUserId);
+
+  return db.select().from(expenses).where(eq(expenses.userId, userId));
+};
+
+export const clearTransactions = async (userId: string) => {
+  validateObjectId(userId, ERROR_STRINGS.InvalidUserId);
+
+  const deleted = await db
+    .delete(expenses)
+    .where(eq(expenses.userId, userId))
+    .returning({ id: expenses.id });
+
+  return deleted.length;
 };
 
 export const bulkImportTransactions = async (userId: string, data: any) => {
+  validateObjectId(userId, ERROR_STRINGS.InvalidUserId);
+
   if (!Array.isArray(data)) {
     throw new ApiError(400, 'Request body must be an array of transactions');
   }
 
-  const transactions: IExpense[] = data.map(transaction => ({ ...transaction, userId }));
-  return Expense.insertMany(transactions);
-};
+  if (data.length === 0) {
+    return [];
+  }
 
-export const clearTransactions = async (userId: string) => {
-  const result = await Expense.deleteMany({ userId });
-  return result.deletedCount;
+  return db
+    .insert(expenses)
+    .values(data.map((transaction) => ({ userId, ...transaction })))
+    .returning();
 };

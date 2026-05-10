@@ -1,43 +1,75 @@
 import * as employerService from '../../src/modules/jobs/services/employerService';
-import { Applicant } from '../../src/modules/jobs/models/applicantModel';
-import { Job } from '../../src/modules/jobs/models/jobModel';
-import { Types } from 'mongoose';
+import { db } from '../../src/config/postgres';
 
-jest.mock('../../src/modules/jobs/models/applicantModel');
-jest.mock('../../src/modules/jobs/models/jobModel');
+// Same generic "thenable" chain pattern as applicantService.test.ts: every drizzle
+// method (from, leftJoin, where, orderBy, limit, offset, values, set, returning)
+// chains indefinitely off one object per operation type, resolving via a shared
+// mock controllable per test with mockResolvedValueOnce.
+jest.mock('../../src/config/postgres', () => {
+  const mockSelectResult = jest.fn();
+  const mockInsertResult = jest.fn();
+  const mockUpdateResult = jest.fn();
+  const mockDeleteResult = jest.fn();
+
+  const makeChain = (resolver: jest.Mock) => {
+    const chain: any = {};
+    ['from', 'leftJoin', 'where', 'orderBy', 'limit', 'offset', 'values', 'set', 'returning'].forEach((method) => {
+      chain[method] = jest.fn(() => chain);
+    });
+    chain.then = (resolve: any, reject: any) => Promise.resolve(resolver()).then(resolve, reject);
+    return chain;
+  };
+
+  const selectChain = makeChain(mockSelectResult);
+  const insertChain = makeChain(mockInsertResult);
+  const updateChain = makeChain(mockUpdateResult);
+  const deleteChain = makeChain(mockDeleteResult);
+
+  return {
+    __esModule: true,
+    db: {
+      select: jest.fn(() => selectChain),
+      insert: jest.fn(() => insertChain),
+      update: jest.fn(() => updateChain),
+      delete: jest.fn(() => deleteChain),
+    },
+    __mocks: {
+      mockSelectResult, mockInsertResult, mockUpdateResult, mockDeleteResult,
+      selectChain, insertChain, updateChain, deleteChain,
+    },
+  };
+});
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { __mocks } = require('../../src/config/postgres');
+const { mockSelectResult, mockInsertResult, mockUpdateResult, mockDeleteResult, insertChain, updateChain } = __mocks;
 
 describe('employerService', () => {
-
-  const profileId = new Types.ObjectId().toString();
-  const jobId = new Types.ObjectId().toString();
+  const profileId = '1';
+  const jobId = '2';
   const invalidId = 'bad';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
   // ==================== fetchMyJobs ====================
   describe('fetchMyJobs', () => {
     it('should return jobs and count for the employer', async () => {
       const jobs = [
-        { _id: 'j1', title: 'Engineer' },
-        { _id: 'j2', title: 'Designer' },
+        { id: 1, title: 'Engineer' },
+        { id: 2, title: 'Designer' },
       ];
-
-      (Job.find as jest.Mock).mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          sort: jest.fn().mockResolvedValue(jobs),
-        }),
-      });
+      mockSelectResult.mockResolvedValueOnce(jobs);
 
       const result = await employerService.fetchMyJobs(profileId);
 
       expect(result).toEqual({ jobs, count: 2 });
-      expect(Job.find).toHaveBeenCalledWith({ postedBy: profileId });
+      expect(db.select).toHaveBeenCalled();
     });
 
     it('should return empty list when employer has no jobs', async () => {
-      (Job.find as jest.Mock).mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          sort: jest.fn().mockResolvedValue([]),
-        }),
-      });
+      mockSelectResult.mockResolvedValueOnce([]);
 
       const result = await employerService.fetchMyJobs(profileId);
       expect(result).toEqual({ jobs: [], count: 0 });
@@ -46,43 +78,39 @@ describe('employerService', () => {
 
   // ==================== createJob ====================
   describe('createJob', () => {
-    it('should create and save a new job', async () => {
+    it('should create and return a new job', async () => {
       const data = { title: 'Engineer', location: 'NYC' };
-      const mockSave = jest.fn().mockResolvedValue({});
-      (Job as any).mockImplementation((d: any) => ({ ...d, save: mockSave }));
+      const created = { id: 1, postedBy: Number(profileId), ...data };
+      mockInsertResult.mockResolvedValueOnce([created]);
 
-      const result = await employerService.createJob(profileId, data);
+      const result = await employerService.createJob(profileId, data as any);
 
-      expect(result).toMatchObject({ postedBy: profileId, ...data });
-      expect(mockSave).toHaveBeenCalled();
+      expect(result).toEqual(created);
+      expect(insertChain.values).toHaveBeenCalledWith({ postedBy: Number(profileId), ...data });
     });
   });
 
   // ==================== fetchJobWithApplications ====================
   describe('fetchJobWithApplications', () => {
-    it('should return job with populated applications when employer owns it', async () => {
-      const job = { _id: jobId, title: 'Engineer', applications: [] };
-
-      (Job.findOne as jest.Mock).mockReturnValue({
-        populate: jest.fn().mockResolvedValue(job),
-      });
+    it('should return job with its applications when employer owns it', async () => {
+      const job = { id: Number(jobId), title: 'Engineer' };
+      const applications = [{ applicantId: 5, status: 'pending', fullName: 'Alice' }];
+      mockSelectResult.mockResolvedValueOnce([job]);
+      mockSelectResult.mockResolvedValueOnce(applications);
 
       const result = await employerService.fetchJobWithApplications(profileId, jobId);
 
-      expect(result).toEqual(job);
-      expect(Job.findOne).toHaveBeenCalledWith({ _id: jobId, postedBy: profileId });
+      expect(result).toEqual({ ...job, applications });
     });
 
-    it('should throw 400 for invalid ObjectId', async () => {
+    it('should throw 400 for invalid job ID', async () => {
       await expect(
         employerService.fetchJobWithApplications(profileId, invalidId)
-      ).rejects.toMatchObject({ statusCode: 400 });
+      ).rejects.toMatchObject({ statusCode: 400, message: 'Invalid job ID' });
     });
 
     it('should throw 404 when job not found or not owned', async () => {
-      (Job.findOne as jest.Mock).mockReturnValue({
-        populate: jest.fn().mockResolvedValue(null),
-      });
+      mockSelectResult.mockResolvedValueOnce([]);
 
       await expect(
         employerService.fetchJobWithApplications(profileId, jobId)
@@ -96,30 +124,28 @@ describe('employerService', () => {
   // ==================== editJob ====================
   describe('editJob', () => {
     it('should update job when employer owns it', async () => {
-      const updated = { _id: jobId, title: 'Updated' };
-      (Job.findOneAndUpdate as jest.Mock).mockResolvedValue(updated);
+      const updated = { id: Number(jobId), title: 'Updated' };
+      mockUpdateResult.mockResolvedValueOnce([updated]);
 
-      const result = await employerService.editJob(profileId, jobId, { title: 'Updated' });
+      const result = await employerService.editJob(profileId, jobId, { title: 'Updated' } as any);
 
       expect(result).toEqual(updated);
-      expect(Job.findOneAndUpdate).toHaveBeenCalledWith(
-        { _id: jobId, postedBy: profileId },
-        { title: 'Updated' },
-        { new: true, runValidators: true }
+      expect(updateChain.set).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Updated', updatedAt: expect.any(Date) })
       );
     });
 
-    it('should throw 400 for invalid ObjectId', async () => {
+    it('should throw 400 for invalid job ID', async () => {
       await expect(
-        employerService.editJob(profileId, invalidId, {})
-      ).rejects.toMatchObject({ statusCode: 400 });
+        employerService.editJob(profileId, invalidId, {} as any)
+      ).rejects.toMatchObject({ statusCode: 400, message: 'Invalid job ID' });
     });
 
     it('should throw 404 when job not found or not owned', async () => {
-      (Job.findOneAndUpdate as jest.Mock).mockResolvedValue(null);
+      mockUpdateResult.mockResolvedValueOnce([]);
 
       await expect(
-        employerService.editJob(profileId, jobId, {})
+        employerService.editJob(profileId, jobId, {} as any)
       ).rejects.toMatchObject({
         statusCode: 404,
         message: 'Job not found or unauthorized',
@@ -129,33 +155,22 @@ describe('employerService', () => {
 
   // ==================== removeJob ====================
   describe('removeJob', () => {
-    it('should delete job and cascade clean up applicants', async () => {
-      const job = { _id: jobId };
-      (Job.findOneAndDelete as jest.Mock).mockResolvedValue(job);
-      (Applicant.updateMany as jest.Mock).mockResolvedValue({ modifiedCount: 5 });
+    it('should delete the job (cascade handles related rows)', async () => {
+      mockDeleteResult.mockResolvedValueOnce([{ id: Number(jobId) }]);
 
       await employerService.removeJob(profileId, jobId);
 
-      expect(Job.findOneAndDelete).toHaveBeenCalledWith({ _id: jobId, postedBy: profileId });
-      expect(Applicant.updateMany).toHaveBeenCalledWith(
-        {},
-        {
-          $pull: {
-            savedJobs: jobId,
-            applications: { jobId },
-          },
-        }
-      );
+      expect(db.delete).toHaveBeenCalled();
     });
 
-    it('should throw 400 for invalid ObjectId', async () => {
+    it('should throw 400 for invalid job ID', async () => {
       await expect(
         employerService.removeJob(profileId, invalidId)
-      ).rejects.toMatchObject({ statusCode: 400 });
+      ).rejects.toMatchObject({ statusCode: 400, message: 'Invalid job ID' });
     });
 
     it('should throw 404 when job not found or not owned', async () => {
-      (Job.findOneAndDelete as jest.Mock).mockResolvedValue(null);
+      mockDeleteResult.mockResolvedValueOnce([]);
 
       await expect(
         employerService.removeJob(profileId, jobId)
@@ -169,40 +184,89 @@ describe('employerService', () => {
   // ==================== toggleArchive ====================
   describe('toggleArchive', () => {
     it('should archive an unarchived job', async () => {
-      const job = { _id: jobId, isArchived: false, save: jest.fn().mockResolvedValue({}) };
-      (Job.findOne as jest.Mock).mockResolvedValue(job);
+      mockSelectResult.mockResolvedValueOnce([{ id: Number(jobId), isArchived: false }]);
+      mockUpdateResult.mockResolvedValueOnce(undefined);
 
       const result = await employerService.toggleArchive(profileId, jobId);
 
       expect(result).toEqual({ isArchived: true, status: 'archived' });
-      expect(job.isArchived).toBe(true);
-      expect(job.save).toHaveBeenCalled();
     });
 
     it('should unarchive an archived job', async () => {
-      const job = { _id: jobId, isArchived: true, save: jest.fn().mockResolvedValue({}) };
-      (Job.findOne as jest.Mock).mockResolvedValue(job);
+      mockSelectResult.mockResolvedValueOnce([{ id: Number(jobId), isArchived: true }]);
+      mockUpdateResult.mockResolvedValueOnce(undefined);
 
       const result = await employerService.toggleArchive(profileId, jobId);
 
       expect(result).toEqual({ isArchived: false, status: 'unarchived' });
-      expect(job.isArchived).toBe(false);
     });
 
-    it('should throw 400 for invalid ObjectId', async () => {
+    it('should throw 400 for invalid job ID', async () => {
       await expect(
         employerService.toggleArchive(profileId, invalidId)
-      ).rejects.toMatchObject({ statusCode: 400 });
+      ).rejects.toMatchObject({ statusCode: 400, message: 'Invalid job ID' });
     });
 
     it('should throw 404 when job not found or not owned', async () => {
-      (Job.findOne as jest.Mock).mockResolvedValue(null);
+      mockSelectResult.mockResolvedValueOnce([]);
 
       await expect(
         employerService.toggleArchive(profileId, jobId)
       ).rejects.toMatchObject({
         statusCode: 404,
         message: 'Job not found or unauthorized',
+      });
+    });
+  });
+
+  // ==================== updateApplicationStatus ====================
+  describe('updateApplicationStatus', () => {
+    const applicantId = '5';
+
+    it('should update the application status when job is owned by employer', async () => {
+      mockSelectResult.mockResolvedValueOnce([{ id: Number(jobId) }]);
+      mockUpdateResult.mockResolvedValueOnce([{ id: 1, status: 'shortlisted' }]);
+
+      const result = await employerService.updateApplicationStatus(profileId, jobId, {
+        applicantId,
+        status: 'shortlisted',
+      } as any);
+
+      expect(result).toEqual({ applicantId, status: 'shortlisted' });
+    });
+
+    it('should throw 400 for invalid job ID', async () => {
+      await expect(
+        employerService.updateApplicationStatus(profileId, invalidId, { applicantId, status: 'shortlisted' } as any)
+      ).rejects.toMatchObject({ statusCode: 400, message: 'Invalid job ID' });
+    });
+
+    it('should throw 400 for invalid applicant ID', async () => {
+      await expect(
+        employerService.updateApplicationStatus(profileId, jobId, { applicantId: invalidId, status: 'shortlisted' } as any)
+      ).rejects.toMatchObject({ statusCode: 400, message: 'Invalid applicant ID' });
+    });
+
+    it('should throw 404 when job not found or not owned', async () => {
+      mockSelectResult.mockResolvedValueOnce([]);
+
+      await expect(
+        employerService.updateApplicationStatus(profileId, jobId, { applicantId, status: 'shortlisted' } as any)
+      ).rejects.toMatchObject({
+        statusCode: 404,
+        message: 'Job not found or unauthorized',
+      });
+    });
+
+    it('should throw 404 when application not found', async () => {
+      mockSelectResult.mockResolvedValueOnce([{ id: Number(jobId) }]);
+      mockUpdateResult.mockResolvedValueOnce([]);
+
+      await expect(
+        employerService.updateApplicationStatus(profileId, jobId, { applicantId, status: 'shortlisted' } as any)
+      ).rejects.toMatchObject({
+        statusCode: 404,
+        message: 'Application not found',
       });
     });
   });

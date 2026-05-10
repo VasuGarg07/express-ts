@@ -1,37 +1,57 @@
 import * as profileService from '../../src/modules/jobs/services/profileService';
-import { Applicant } from '../../src/modules/jobs/models/applicantModel';
-import { Employer } from '../../src/modules/jobs/models/employerModel';
-import { Job } from '../../src/modules/jobs/models/jobModel';
+import { db } from '../../src/config/postgres';
 
-jest.mock('../../src/modules/jobs/models/applicantModel');
-jest.mock('../../src/modules/jobs/models/employerModel');
-jest.mock('../../src/modules/jobs/models/jobModel');
+// profileService only ever touches `db` through drizzle's chainable query builder
+// (insert/update/delete/select -> values/set/where/from -> returning). Mock that
+// chain shape directly instead of the underlying pg driver.
+jest.mock('../../src/config/postgres', () => {
+  const mockReturning = jest.fn();
+  const mockSelectWhere = jest.fn();
+
+  const mockValues = jest.fn(() => ({ returning: mockReturning }));
+  const mockSet = jest.fn(() => ({ where: jest.fn(() => ({ returning: mockReturning })) }));
+  const mockDeleteWhere = jest.fn(() => ({ returning: mockReturning }));
+  const mockFrom = jest.fn(() => ({ where: mockSelectWhere }));
+
+  return {
+    __esModule: true,
+    db: {
+      insert: jest.fn(() => ({ values: mockValues })),
+      update: jest.fn(() => ({ set: mockSet })),
+      delete: jest.fn(() => ({ where: mockDeleteWhere })),
+      select: jest.fn(() => ({ from: mockFrom })),
+    },
+    __mocks: { mockReturning, mockSelectWhere, mockValues, mockSet, mockDeleteWhere, mockFrom },
+  };
+});
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { __mocks } = require('../../src/config/postgres');
+const { mockReturning, mockSelectWhere, mockSet, mockDeleteWhere } = __mocks;
 
 describe('profileService', () => {
-
   const userId = 'user-1';
-  const profileId = 'profile-1';
+  const profileId = '1';
 
   // ==================== fetchProfile ====================
   describe('fetchProfile', () => {
     it('should return applicant profile when role is applicant', async () => {
-      const profile = { _id: profileId, fullName: 'Alice' };
-      (Applicant.findById as jest.Mock).mockResolvedValue(profile);
+      const profile = { id: 1, fullName: 'Alice' };
+      mockSelectWhere.mockResolvedValueOnce([profile]);
 
       const result = await profileService.fetchProfile('applicant', profileId);
 
       expect(result).toEqual({ role: 'applicant', profile });
-      expect(Applicant.findById).toHaveBeenCalledWith(profileId);
+      expect(db.select).toHaveBeenCalled();
     });
 
     it('should return employer profile when role is employer', async () => {
-      const profile = { _id: profileId, companyName: 'Acme' };
-      (Employer.findById as jest.Mock).mockResolvedValue(profile);
+      const profile = { id: 1, companyName: 'Acme' };
+      mockSelectWhere.mockResolvedValueOnce([profile]);
 
       const result = await profileService.fetchProfile('employer', profileId);
 
       expect(result).toEqual({ role: 'employer', profile });
-      expect(Employer.findById).toHaveBeenCalledWith(profileId);
     });
 
     it('should throw 400 for invalid role', async () => {
@@ -42,7 +62,7 @@ describe('profileService', () => {
     });
 
     it('should throw 404 when profile not found', async () => {
-      (Applicant.findById as jest.Mock).mockResolvedValue(null);
+      mockSelectWhere.mockResolvedValueOnce([]);
 
       await expect(profileService.fetchProfile('applicant', profileId)).rejects.toMatchObject({
         statusCode: 404,
@@ -54,95 +74,94 @@ describe('profileService', () => {
   // ==================== registerNewApplicant ====================
   describe('registerNewApplicant', () => {
     it('should create a new applicant profile', async () => {
-      (Applicant.findOne as jest.Mock).mockResolvedValue(null);
-      const mockSave = jest.fn().mockResolvedValue({});
-      (Applicant as any).mockImplementation((d: any) => ({ ...d, save: mockSave }));
+      mockSelectWhere.mockResolvedValueOnce([]);
+      mockReturning.mockResolvedValueOnce([{ id: 1, userId, fullName: 'Alice' }]);
 
-      const result = await profileService.registerNewApplicant(userId, { fullName: 'Alice' });
+      const result = await profileService.registerNewApplicant(userId, { fullName: 'Alice' } as any);
 
       expect(result).toMatchObject({ userId, fullName: 'Alice' });
-      expect(mockSave).toHaveBeenCalled();
+      expect(db.insert).toHaveBeenCalled();
     });
 
     it('should throw 401 when userId is missing', async () => {
-      await expect(profileService.registerNewApplicant('', {})).rejects.toMatchObject({
+      await expect(profileService.registerNewApplicant('', {} as any)).rejects.toMatchObject({
         statusCode: 401,
         message: 'Unauthorized',
       });
     });
 
     it('should throw 400 when applicant already exists', async () => {
-      (Applicant.findOne as jest.Mock).mockResolvedValue({ _id: 'existing' });
+      mockSelectWhere.mockResolvedValueOnce([{ id: 1 }]);
 
-      await expect(profileService.registerNewApplicant(userId, {})).rejects.toMatchObject({
+      await expect(profileService.registerNewApplicant(userId, {} as any)).rejects.toMatchObject({
         statusCode: 400,
         message: 'Applicant profile already exists',
       });
+      expect(db.insert).not.toHaveBeenCalled();
     });
   });
 
   // ==================== registerNewEmployer ====================
   describe('registerNewEmployer', () => {
     it('should create a new employer profile', async () => {
-      (Employer.findOne as jest.Mock).mockResolvedValue(null);
-      const mockSave = jest.fn().mockResolvedValue({});
-      (Employer as any).mockImplementation((d: any) => ({ ...d, save: mockSave }));
+      mockSelectWhere.mockResolvedValueOnce([]);
+      mockReturning.mockResolvedValueOnce([{ id: 1, userId, companyName: 'Acme' }]);
 
-      const result = await profileService.registerNewEmployer(userId, { companyName: 'Acme' });
+      const result = await profileService.registerNewEmployer(userId, { companyName: 'Acme' } as any);
 
       expect(result).toMatchObject({ userId, companyName: 'Acme' });
-      expect(mockSave).toHaveBeenCalled();
+      expect(db.insert).toHaveBeenCalled();
     });
 
     it('should throw 401 when userId is missing', async () => {
-      await expect(profileService.registerNewEmployer('', {})).rejects.toMatchObject({
+      await expect(profileService.registerNewEmployer('', {} as any)).rejects.toMatchObject({
         statusCode: 401,
         message: 'Unauthorized',
       });
     });
 
     it('should throw 400 when employer already exists', async () => {
-      (Employer.findOne as jest.Mock).mockResolvedValue({ _id: 'existing' });
+      mockSelectWhere.mockResolvedValueOnce([{ id: 1 }]);
 
-      await expect(profileService.registerNewEmployer(userId, {})).rejects.toMatchObject({
+      await expect(profileService.registerNewEmployer(userId, {} as any)).rejects.toMatchObject({
         statusCode: 400,
         message: 'Employer profile already exists',
       });
+      expect(db.insert).not.toHaveBeenCalled();
     });
   });
 
   // ==================== editProfile ====================
   describe('editProfile', () => {
     it('should update applicant profile when role is applicant', async () => {
-      const updated = { _id: profileId, fullName: 'Alice Updated' };
-      (Applicant.findByIdAndUpdate as jest.Mock).mockResolvedValue(updated);
+      const updated = { id: 1, fullName: 'Alice Updated' };
+      mockReturning.mockResolvedValueOnce([updated]);
 
       const result = await profileService.editProfile('applicant', profileId, {
         fullName: 'Alice Updated',
-      });
+      } as any);
 
       expect(result).toEqual(updated);
-      expect(Applicant.findByIdAndUpdate).toHaveBeenCalledWith(
-        profileId,
-        { fullName: 'Alice Updated' },
-        { new: true, runValidators: true }
+      expect(db.update).toHaveBeenCalled();
+      expect(mockSet).toHaveBeenCalledWith(
+        expect.objectContaining({ fullName: 'Alice Updated', updatedAt: expect.any(Date) })
       );
     });
 
     it('should update employer profile when role is employer', async () => {
-      const updated = { _id: profileId, companyName: 'Acme Inc' };
-      (Employer.findByIdAndUpdate as jest.Mock).mockResolvedValue(updated);
+      const updated = { id: 1, companyName: 'Acme Inc' };
+      mockReturning.mockResolvedValueOnce([updated]);
 
       const result = await profileService.editProfile('employer', profileId, {
         companyName: 'Acme Inc',
-      });
+      } as any);
 
       expect(result).toEqual(updated);
     });
 
     it('should throw 400 for invalid role', async () => {
       await expect(
-        profileService.editProfile('admin', profileId, {})
+        profileService.editProfile('admin', profileId, {} as any)
       ).rejects.toMatchObject({
         statusCode: 400,
         message: 'Invalid role',
@@ -150,10 +169,10 @@ describe('profileService', () => {
     });
 
     it('should throw 404 when profile not found', async () => {
-      (Applicant.findByIdAndUpdate as jest.Mock).mockResolvedValue(null);
+      mockReturning.mockResolvedValueOnce([]);
 
       await expect(
-        profileService.editProfile('applicant', profileId, {})
+        profileService.editProfile('applicant', profileId, {} as any)
       ).rejects.toMatchObject({
         statusCode: 404,
         message: 'Profile not found',
@@ -163,46 +182,23 @@ describe('profileService', () => {
 
   // ==================== deleteUserAccount ====================
   describe('deleteUserAccount', () => {
-    it('should delete applicant and clean up job applications', async () => {
-      (Applicant.findByIdAndDelete as jest.Mock).mockResolvedValue({ _id: profileId });
-      (Job.updateMany as jest.Mock).mockResolvedValue({ modifiedCount: 3 });
+    it('should delete applicant account', async () => {
+      mockReturning.mockResolvedValueOnce([{ id: 1 }]);
 
       const result = await profileService.deleteUserAccount('applicant', profileId, profileId);
 
       expect(result).toBe('Applicant account deleted successfully');
-      expect(Applicant.findByIdAndDelete).toHaveBeenCalledWith(profileId);
-      expect(Job.updateMany).toHaveBeenCalledWith(
-        { 'applications.applicantId': profileId },
-        { $pull: { applications: { applicantId: profileId } } }
-      );
+      expect(db.delete).toHaveBeenCalled();
+      expect(mockDeleteWhere).toHaveBeenCalled();
     });
 
-    it('should delete employer, all their jobs, and clean up applicants', async () => {
-      const jobs = [{ _id: 'j1' }, { _id: 'j2' }];
-
-      (Job.find as jest.Mock).mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          lean: jest.fn().mockResolvedValue(jobs),
-        }),
-      });
-      (Job.deleteMany as jest.Mock).mockResolvedValue({ deletedCount: 2 });
-      (Applicant.updateMany as jest.Mock).mockResolvedValue({ modifiedCount: 4 });
-      (Employer.findByIdAndDelete as jest.Mock).mockResolvedValue({ _id: profileId });
+    it('should delete employer account', async () => {
+      mockReturning.mockResolvedValueOnce([{ id: 1 }]);
 
       const result = await profileService.deleteUserAccount('employer', profileId, profileId);
 
       expect(result).toBe('Employer account deleted successfully');
-      expect(Job.deleteMany).toHaveBeenCalledWith({ postedBy: profileId });
-      expect(Applicant.updateMany).toHaveBeenCalledWith(
-        {},
-        {
-          $pull: {
-            savedJobs: { $in: ['j1', 'j2'] },
-            applications: { jobId: { $in: ['j1', 'j2'] } },
-          },
-        }
-      );
-      expect(Employer.findByIdAndDelete).toHaveBeenCalledWith(profileId);
+      expect(db.delete).toHaveBeenCalled();
     });
 
     it('should throw 403 when paramId does not match profileId', async () => {
@@ -212,10 +208,11 @@ describe('profileService', () => {
         statusCode: 403,
         message: 'Unauthorized to delete this account',
       });
+      expect(db.delete).not.toHaveBeenCalled();
     });
 
     it('should throw 404 when applicant profile not found', async () => {
-      (Applicant.findByIdAndDelete as jest.Mock).mockResolvedValue(null);
+      mockReturning.mockResolvedValueOnce([]);
 
       await expect(
         profileService.deleteUserAccount('applicant', profileId, profileId)
@@ -226,14 +223,7 @@ describe('profileService', () => {
     });
 
     it('should throw 404 when employer profile not found', async () => {
-      (Job.find as jest.Mock).mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          lean: jest.fn().mockResolvedValue([]),
-        }),
-      });
-      (Job.deleteMany as jest.Mock).mockResolvedValue({ deletedCount: 0 });
-      (Applicant.updateMany as jest.Mock).mockResolvedValue({});
-      (Employer.findByIdAndDelete as jest.Mock).mockResolvedValue(null);
+      mockReturning.mockResolvedValueOnce([]);
 
       await expect(
         profileService.deleteUserAccount('employer', profileId, profileId)

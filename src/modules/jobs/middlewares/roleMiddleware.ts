@@ -1,8 +1,9 @@
 import { NextFunction, Response } from "express";
+import { eq } from "drizzle-orm";
 import { AuthenticatedRequest } from "../../../types";
 import { ApiError } from "../../../utils/ApiError";
-import { Applicant } from "../models/applicantModel";
-import { Employer } from "../models/employerModel";
+import { db } from "../../../config/postgres";
+import { applicants, employers } from "../schema";
 
 // Auto-detects role from DB and attaches to locals
 export const extractRole = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -12,18 +13,18 @@ export const extractRole = async (req: AuthenticatedRequest, res: Response, next
             throw new ApiError(401, "Unauthorized");
         }
 
-        const applicant = await Applicant.findOne({ userId }).select('_id').lean();
+        const [applicant] = await db.select({ id: applicants.id }).from(applicants).where(eq(applicants.userId, userId)).limit(1);
         if (applicant) {
             res.locals.role = "applicant";
-            res.locals.profileId = applicant._id.toString();
+            res.locals.profileId = String(applicant.id);
             next();
             return;
         }
 
-        const employer = await Employer.findOne({ userId }).select('_id').lean();
+        const [employer] = await db.select({ id: employers.id }).from(employers).where(eq(employers.userId, userId)).limit(1);
         if (employer) {
             res.locals.role = "employer";
-            res.locals.profileId = employer._id.toString();
+            res.locals.profileId = String(employer.id);
             next();
             return;
         }
@@ -42,13 +43,13 @@ export const isApplicant = async (req: AuthenticatedRequest, res: Response, next
             throw new ApiError(401, "Unauthorized");
         }
 
-        const applicant = await Applicant.findOne({ userId }).select('_id').lean();
+        const [applicant] = await db.select({ id: applicants.id }).from(applicants).where(eq(applicants.userId, userId)).limit(1);
         if (!applicant) {
             throw new ApiError(403, "Applicant profile required");
         }
 
         res.locals.role = "applicant";
-        res.locals.profileId = applicant._id.toString();
+        res.locals.profileId = String(applicant.id);
         next();
     } catch (error) {
         next(error);
@@ -63,13 +64,13 @@ export const isEmployer = async (req: AuthenticatedRequest, res: Response, next:
             throw new ApiError(401, "Unauthorized");
         }
 
-        const employer = await Employer.findOne({ userId }).select('_id').lean();
+        const [employer] = await db.select({ id: employers.id }).from(employers).where(eq(employers.userId, userId)).limit(1);
         if (!employer) {
             throw new ApiError(403, "Employer profile required");
         }
 
         res.locals.role = "employer";
-        res.locals.profileId = employer._id.toString();
+        res.locals.profileId = String(employer.id);
         next();
     } catch (error) {
         next(error);

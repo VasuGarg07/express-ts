@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response } from 'express';
+import { NextFunction, Response } from 'express';
 import * as expenseService from './expenseService';
 import { AuthenticatedRequest } from '../../types';
 import { SUCCESS_STRINGS } from '../../utils/response.string';
@@ -15,10 +15,10 @@ export const addTransaction = async (req: AuthenticatedRequest, res: Response, n
   }
 };
 
-export const updateTransaction = async (req: Request, res: Response, next: NextFunction) => {
+export const updateTransaction = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { title, amount, type, category, date, description } = req.body;
-    const transaction = await expenseService.editTransaction(req.params.id as string, {
+    const transaction = await expenseService.editTransaction(req.params.id as string, req.user!.id, {
       title, amount, type, category, date, description,
     });
     res.status(200).json({ message: SUCCESS_STRINGS.TranscationUpdated, transaction });
@@ -27,9 +27,9 @@ export const updateTransaction = async (req: Request, res: Response, next: NextF
   }
 };
 
-export const deleteTransaction = async (req: Request, res: Response, next: NextFunction) => {
+export const deleteTransaction = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    await expenseService.removeTransaction(req.params.id as string);
+    await expenseService.removeTransaction(req.params.id as string, req.user!.id);
     res.status(200).json({ message: SUCCESS_STRINGS.TransactionDeleted });
   } catch (error) {
     next(error);

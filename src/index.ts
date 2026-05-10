@@ -1,6 +1,7 @@
 import { createApplication } from './app';
 import CONFIG from './config/config';
-import connectDb from './config/db';
+import connectMongo from './config/mongodb';
+import { connectPostgres } from './config/postgres';
 import { createServerWithSocket } from './server';
 import cron from 'node-cron'
 import https from 'https'
@@ -8,8 +9,9 @@ import https from 'https'
 const app = createApplication(CONFIG.ALLOWED_ORIGINS);
 const { server } = createServerWithSocket(app);
 
-// Connect to MongoDb
-connectDb();
+// Connect to databases
+connectMongo();
+connectPostgres();
 
 if (CONFIG.NODE_ENV === "prod") {
   cron.schedule('*/14 * * * *', () => {
@@ -25,5 +27,5 @@ if (CONFIG.NODE_ENV === "prod") {
 
 // Start the server
 server.listen(CONFIG.PORT, () => {
-    console.log(`Server is running on port ${CONFIG.PORT}`);
+    console.log(`Server is up and running on port ${CONFIG.PORT}`);
 });

@@ -1,14 +1,20 @@
-import { Applicant } from '../models/applicantModel';
-import { Employer } from '../models/employerModel';
-import { Job } from '../models/jobModel';
+import { eq } from 'drizzle-orm';
+import { db } from '../../../config/postgres';
+import { applicants, employers } from '../schema';
 import { ApiError } from '../../../utils/ApiError';
 import { ApplicantInput, EmployerInput } from '../validators/jobValidators';
 
 export const fetchProfile = async (role: string, profileId: string) => {
   let profile;
-  if (role === 'applicant') profile = await Applicant.findById(profileId);
-  else if (role === 'employer') profile = await Employer.findById(profileId);
-  else throw new ApiError(400, 'Invalid role');
+  const id = Number(profileId);
+
+  if (role === 'applicant') {
+    [profile] = await db.select().from(applicants).where(eq(applicants.id, id));
+  } else if (role === 'employer') {
+    [profile] = await db.select().from(employers).where(eq(employers.id, id));
+  } else {
+    throw new ApiError(400, 'Invalid role');
+  }
 
   if (!profile) {
     throw new ApiError(404, 'Profile not found');
@@ -16,19 +22,20 @@ export const fetchProfile = async (role: string, profileId: string) => {
   return { role, profile };
 };
 
-
 export const registerNewApplicant = async (userId: string, data: Partial<ApplicantInput>) => {
   if (!userId) {
     throw new ApiError(401, 'Unauthorized');
   }
 
-  const existing = await Applicant.findOne({ userId });
+  const [existing] = await db.select().from(applicants).where(eq(applicants.userId, userId));
   if (existing) {
     throw new ApiError(400, 'Applicant profile already exists');
   }
 
-  const applicant = new Applicant({ userId, ...data });
-  await applicant.save();
+  const [applicant] = await db
+    .insert(applicants)
+    .values({ userId, ...data } as typeof applicants.$inferInsert)
+    .returning();
   return applicant;
 };
 
@@ -37,22 +44,38 @@ export const registerNewEmployer = async (userId: string, data: Partial<Employer
     throw new ApiError(401, 'Unauthorized');
   }
 
-  const existing = await Employer.findOne({ userId });
+  const [existing] = await db.select().from(employers).where(eq(employers.userId, userId));
   if (existing) {
     throw new ApiError(400, 'Employer profile already exists');
   }
 
-  const employer = new Employer({ userId, ...data });
-  await employer.save();
+  const [employer] = await db
+    .insert(employers)
+    .values({ userId, ...data } as typeof employers.$inferInsert)
+    .returning();
   return employer;
 };
 
-export const editProfile = async (role: string, profileId: string, data: Partial<ApplicantInput> | Partial<EmployerInput>) => {
+export const editProfile = async (
+  role: string,
+  profileId: string,
+  data: Partial<ApplicantInput> | Partial<EmployerInput>
+) => {
+  const id = Number(profileId);
   let updated;
+
   if (role === 'applicant') {
-    updated = await Applicant.findByIdAndUpdate(profileId, data, { new: true, runValidators: true });
+    [updated] = await db
+      .update(applicants)
+      .set({ ...data, updatedAt: new Date() } as Partial<typeof applicants.$inferInsert>)
+      .where(eq(applicants.id, id))
+      .returning();
   } else if (role === 'employer') {
-    updated = await Employer.findByIdAndUpdate(profileId, data, { new: true, runValidators: true });
+    [updated] = await db
+      .update(employers)
+      .set({ ...data, updatedAt: new Date() } as Partial<typeof employers.$inferInsert>)
+      .where(eq(employers.id, id))
+      .returning();
   } else {
     throw new ApiError(400, 'Invalid role');
   }
@@ -68,34 +91,18 @@ export const deleteUserAccount = async (role: string, profileId: string, paramId
     throw new ApiError(403, 'Unauthorized to delete this account');
   }
 
+  const id = Number(profileId);
+
   if (role === 'applicant') {
-    const deleted = await Applicant.findByIdAndDelete(profileId);
+    const [deleted] = await db.delete(applicants).where(eq(applicants.id, id)).returning();
     if (!deleted) {
       throw new ApiError(404, 'Profile not found');
     }
-    await Job.updateMany(
-      { 'applications.applicantId': profileId },
-      { $pull: { applications: { applicantId: profileId } } }
-    );
     return 'Applicant account deleted successfully';
   }
 
   if (role === 'employer') {
-    const jobs = await Job.find({ postedBy: profileId }).select('_id').lean();
-    const jobIds = jobs.map(j => j._id);
-
-    await Job.deleteMany({ postedBy: profileId });
-    await Applicant.updateMany(
-      {},
-      {
-        $pull: {
-          savedJobs: { $in: jobIds },
-          applications: { jobId: { $in: jobIds } },
-        },
-      }
-    );
-
-    const deleted = await Employer.findByIdAndDelete(profileId);
+    const [deleted] = await db.delete(employers).where(eq(employers.id, id)).returning();
     if (!deleted) {
       throw new ApiError(404, 'Profile not found');
     }

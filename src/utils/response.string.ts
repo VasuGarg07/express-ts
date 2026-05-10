@@ -11,6 +11,7 @@ export const ERROR_STRINGS = {
 
     // Expenses
     InvalidTxnId: "Transaction ID is required and must be valid",
+    InvalidUserId: "User ID is required and must be valid",
     TransactionNotFound: "Transaction not found",
 
     // Blogs

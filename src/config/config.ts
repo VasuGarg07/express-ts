@@ -12,6 +12,7 @@ const DB_PASSWORD = process.env.DB_PASSWORD || "your_db_password";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "your_google_client_id";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "your_google_client_secret";
 const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || "http://localhost:3000/api/auth/google/callback";
+const POSTGRES_URI = process.env.POSTGRES_URI || 'postgresql://localhost:5432/myapp';
 
 const CONFIG = {
     NODE_ENV,
@@ -24,7 +25,8 @@ const CONFIG = {
     DB_PASSWORD,
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
-    GOOGLE_CALLBACK_URL
+    GOOGLE_CALLBACK_URL,
+    POSTGRES_URI
 } as const;
 
 export default CONFIG;
