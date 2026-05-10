@@ -8,7 +8,7 @@ export const validate = (schema: ZodSchema) => (req: Request, res: Response, nex
     } catch (error: any) {
         res.status(400).json({
             success: false,
-            errors: error.errors.map((err: any) => ({
+            errors: error.issues.map((err: any) => ({
                 field: err.path[0],
                 message: err.message,
             })),
