@@ -15,6 +15,7 @@ const SECRET_KEY = process.env.JWT_SECRET || 'secret_key';
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || "encryption_key";
 const DB_USERNAME = process.env.DB_USERNAME || "your_db_username";
 const DB_PASSWORD = process.env.DB_PASSWORD || "your_db_password";
+const POSTGRES_URI = process.env.POSTGRES_URI || 'postgresql://localhost:5432/myapp';
 
 const CONFIG = {
     PORT,
@@ -23,7 +24,8 @@ const CONFIG = {
     SECRET_KEY,
     ENCRYPTION_KEY,
     DB_USERNAME,
-    DB_PASSWORD
+    DB_PASSWORD,
+    POSTGRES_URI
 } as const;
 
 export default CONFIG;

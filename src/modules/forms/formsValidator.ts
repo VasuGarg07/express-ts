@@ -191,7 +191,7 @@ const validateRegexPatterns = (data: any): boolean => {
 };
 
 // Enhanced validation with business logic
-const enhancedFormValidation = (schema: z.ZodSchema) => {
+const enhancedFormValidation = (schema: z.ZodTypeAny ) => {
     return schema.refine(validateUniqueKeys, {
         message: 'Duplicate keys found across form entities',
         path: ['keys']

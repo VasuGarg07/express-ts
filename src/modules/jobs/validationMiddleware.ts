@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from "express";
-import { ZodSchema, ZodError } from "zod";
+import { ZodTypeAny , ZodError } from "zod";
 import { applicantUpdateSchema, employerUpdateSchema } from "./jobValidators";
 
 // Validates request body against a Zod schema
-export const validate = (schema: ZodSchema) => {
+export const validate = (schema: ZodTypeAny ) => {
     return (req: Request, res: Response, next: NextFunction) => {
         try {
             schema.parse(req.body);
@@ -35,7 +35,7 @@ export const roleBasedValidate = (
         return;
     }
 
-    let schema: ZodSchema;
+    let schema: ZodTypeAny ;
 
     if (role === "applicant") {
         schema = applicantUpdateSchema;
