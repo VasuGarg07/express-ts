@@ -1,7 +1,7 @@
 import { Server, Socket } from "socket.io";
 import { RoomService, SocketRoom } from "./roomsService";
 import jwt from 'jsonwebtoken';
-import CONFIG from "../../config/config";
+import { getPublicKey } from "../../utils/authService";
 
 declare module "socket.io" {
     interface Socket {
@@ -11,8 +11,6 @@ declare module "socket.io" {
         lastMessageAt: number;
     }
 }
-
-const secretKey = CONFIG.SECRET_KEY;
 
 function serializeRoom(room: SocketRoom) {
     return {
@@ -50,7 +48,7 @@ export const initSocket = (io: Server) => {
         if (!token) return next(new Error("Unauthorized"));
 
         try {
-            const decoded = jwt.verify(token, secretKey) as Record<string, any>;
+            const decoded = jwt.verify(token, getPublicKey(), { algorithms: ['RS256'] }) as Record<string, any>;
             socket.userId = decoded.id;
             socket.userName = decoded.username;
             next();

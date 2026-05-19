@@ -1,29 +1,26 @@
-# Use Node.js 20 on Alpine Linux as our base image
-# Alpine is a minimal Linux distro (~5MB), keeps the image small
-FROM node:20-alpine
-
-# Set the working directory inside the container
-# All following commands will run from this folder
+# ---------- Base ----------
+FROM node:20-alpine AS base
 WORKDIR /app
-
-# Copy only package.json and package-lock.json first
-# We do this before copying source code because Docker caches layers
-# If package.json hasn't changed, Docker skips npm install on next build (faster)
 COPY package*.json ./
 
-# Install dependencies inside the container
+# ---------- Dev ----------
+FROM base AS dev
 RUN npm install
-
-# Now copy the rest of the source code
 COPY . .
+EXPOSE 5000
+CMD ["npm", "run", "dev"]
 
-# Compile TypeScript → JavaScript into /dist folder
-# Node.js can't run TypeScript directly, so this step is required
+# ---------- Build ----------
+FROM base AS build
+RUN npm install
+COPY . .
 RUN npm run build
 
-# Backend will listen on port 3000
-EXPOSE 3000
-
-# Run the compiled JavaScript output
-# Make sure this path matches your tsconfig outDir setting
+# ---------- Prod ----------
+FROM node:20-alpine AS prod
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --omit=dev
+COPY --from=build /app/dist ./dist
+EXPOSE 5000
 CMD ["node", "dist/index.js"]

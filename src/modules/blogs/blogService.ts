@@ -114,7 +114,7 @@ export const createBlog = async (
 ) => {
   const notebook = await Notebook.findById(notebookId);
   if (!notebook) throw new ApiError(404, ERROR_STRINGS.NotebookNotFound);
-  if (notebook.userId.toString() !== userId) throw new ApiError(403, ERROR_STRINGS.UnauthorizedAccess);
+  if (notebook.userId !== userId) throw new ApiError(403, ERROR_STRINGS.UnauthorizedAccess);
 
   const blog = new Blog({ userId, notebookId, ...data });
   await blog.save();
@@ -126,7 +126,7 @@ export const editBlog = async (userId: string, blogId: string, body: any) => {
 
   const blog = await Blog.findById(blogId);
   if (!blog) throw new ApiError(404, ERROR_STRINGS.BlogNotFound);
-  if (blog.userId.toString() !== userId) throw new ApiError(403, ERROR_STRINGS.UnauthorizedAccess);
+  if (blog.userId !== userId) throw new ApiError(403, ERROR_STRINGS.UnauthorizedAccess);
 
   const validatedData = BlogPatchValidator.parse(body);
   return Blog.findByIdAndUpdate(blogId, validatedData, { new: true });
@@ -143,7 +143,7 @@ export const moveBlogToNotebook = async (userId: string, blogId: string, newNote
 
   if (!blog) throw new ApiError(404, ERROR_STRINGS.BlogNotFound);
   if (!notebook) throw new ApiError(404, ERROR_STRINGS.NotebookNotFound);
-  if (blog.userId.toString() !== userId || notebook.userId.toString() !== userId) {
+  if (blog.userId !== userId || notebook.userId !== userId) {
     throw new ApiError(403, ERROR_STRINGS.UnauthorizedAccess);
   }
 
@@ -155,7 +155,7 @@ export const archiveBlogById = async (userId: string, blogId: string) => {
 
   const blog = await Blog.findById(blogId);
   if (!blog) throw new ApiError(404, ERROR_STRINGS.BlogNotFound);
-  if (blog.userId.toString() !== userId) throw new ApiError(403, ERROR_STRINGS.UnauthorizedAccess);
+  if (blog.userId !== userId) throw new ApiError(403, ERROR_STRINGS.UnauthorizedAccess);
 
   return Blog.findByIdAndUpdate(blogId, { isArchived: true }, { new: true });
 };
@@ -177,7 +177,7 @@ export const removeBlogById = async (userId: string, blogId: string) => {
 
   const blog = await Blog.findById(blogId);
   if (!blog) throw new ApiError(404, ERROR_STRINGS.BlogNotFound);
-  if (blog.userId.toString() !== userId) throw new ApiError(403, ERROR_STRINGS.UnauthorizedAccess);
+  if (blog.userId !== userId) throw new ApiError(403, ERROR_STRINGS.UnauthorizedAccess);
 
   await Blog.findByIdAndDelete(blogId);
 };

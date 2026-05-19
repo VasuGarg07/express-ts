@@ -84,7 +84,7 @@ export const editNotebook = async (userId: string, notebookId: string, body: any
 
   const notebook = await Notebook.findById(notebookId);
   if (!notebook) throw new ApiError(404, ERROR_STRINGS.NotebookNotFound);
-  if (notebook.userId.toString() !== userId) throw new ApiError(403, ERROR_STRINGS.UnauthorizedAccess);
+  if (notebook.userId !== userId) throw new ApiError(403, ERROR_STRINGS.UnauthorizedAccess);
 
   const validatedData = NotebookPatchValidator.parse(body);
   return Notebook.findByIdAndUpdate(notebookId, validatedData, { new: true });
@@ -95,7 +95,7 @@ export const removeNotebookById = async (userId: string, notebookId: string) => 
 
   const notebook = await Notebook.findById(notebookId);
   if (!notebook) throw new ApiError(404, ERROR_STRINGS.NotebookNotFound);
-  if (notebook.userId.toString() !== userId) throw new ApiError(403, ERROR_STRINGS.UnauthorizedAccess);
+  if (notebook.userId !== userId) throw new ApiError(403, ERROR_STRINGS.UnauthorizedAccess);
 
   const [, deletedBlogs] = await Promise.all([
     Notebook.findByIdAndDelete(notebookId),

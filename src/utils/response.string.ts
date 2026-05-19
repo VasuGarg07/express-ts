@@ -1,13 +1,6 @@
 export const ERROR_STRINGS = {
     // Auth
-    IncorrectPassword: "Password doesn't match. Please verify and try again",
-    UserNotFound: "User not found",
-    InvalidCreds: "Invalid credentials",
-    ServerError: "An unexpected error occurred. Please try again later",
-    NoRefToken: "Refresh token is required",
-    InvalidToken: "Invalid or expired refresh token",
     UnauthorizedAccess: "Unauthorized access",
-    ForbiddenAction: "You do not have permission for this action",
 
     // Expenses
     InvalidTxnId: "Transaction ID is required and must be valid",
@@ -54,11 +47,6 @@ export const ERROR_STRINGS = {
 };
 
 export const SUCCESS_STRINGS = {
-    // Auth
-    UserCreated: "User registered successfully",
-    PasswordChanged: "Password changed successfully",
-    TokenRefreshed: "Access token refreshed",
-
     // Expenses
     TransactionAdded: "Transaction added successfully",
     TranscationUpdated: "Transaction updated successfully",

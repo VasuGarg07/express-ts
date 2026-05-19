@@ -79,7 +79,7 @@ export interface IFormConfig {
 
 // Main Form Document Interface
 export interface IForm extends Document {
-    userId: Types.ObjectId;
+    userId: string;
     title: string;
     description?: string;
     steps: IFormStep[];
@@ -147,7 +147,7 @@ const stepSchema = new Schema<IFormStep>({
 // Main Form Schema
 const formSchema = new Schema<IForm>(
     {
-        userId: { type: Schema.Types.ObjectId, required: true, ref: "users" },
+        userId: { type: String, required: true },
         title: { type: String, required: true, maxlength: 200 },
         description: { type: String, maxlength: 500 },
         steps: [stepSchema],

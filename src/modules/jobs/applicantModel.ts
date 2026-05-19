@@ -40,7 +40,7 @@ export interface IApplication {
 }
 
 export interface IApplicant extends Document {
-    userId: Types.ObjectId;
+    userId: string;
 
     // Basic Info
     fullName: string;
@@ -111,7 +111,7 @@ const applicationSchema = new Schema<IApplication>({
 }, { _id: false });
 
 const applicantSchema = new Schema<IApplicant>({
-    userId: { type: Schema.Types.ObjectId, ref: 'users', required: true, unique: true },
+    userId: { type: String, required: true, unique: true },
 
     // Basic Info
     fullName: { type: String, required: true },

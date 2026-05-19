@@ -11,7 +11,7 @@ const getOwnedForm = async (formId: string, userId: string) => {
   if (!form) {
     throw new ApiError(404, ERROR_STRINGS.FormNotFound);
   }
-  if (form.userId.toString() !== userId) {
+  if (form.userId !== userId) {
     throw new ApiError(403, ERROR_STRINGS.FormNotOwned);
   }
   return form;
@@ -171,7 +171,7 @@ const getOwnedResponse = async (responseId: string, userId: string) => {
   if (!form) {
     throw new ApiError(404, ERROR_STRINGS.FormNotFound);
   }
-  if (form.userId.toString() !== userId) {
+  if (form.userId !== userId) {
     throw new ApiError(403, ERROR_STRINGS.FormNotOwned);
   }
 

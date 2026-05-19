@@ -3,7 +3,7 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 import { handleDocTransform } from "../../utils/utilities";
 
 interface IBlog extends Document {
-    userId: Types.ObjectId;
+    userId: string;
     notebookId: Types.ObjectId;
     author: string;
     title: string;
@@ -14,7 +14,7 @@ interface IBlog extends Document {
 
 const blogSchema = new Schema<IBlog>(
     {
-        userId: { type: Schema.Types.ObjectId, required: true, ref: "users" },
+        userId: { type: String, required: true },
         notebookId: { type: Schema.Types.ObjectId, required: true, ref: "notebooks" },
         author: { type: String, required: true },
         title: { type: String, required: true, unique: true },

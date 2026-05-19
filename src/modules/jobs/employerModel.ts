@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema, Types } from "mongoose";
+import mongoose, { Document, Schema } from "mongoose";
 import { handleDocTransform } from "../../utils/utilities";
 
 // ==================== INTERFACES ====================
@@ -12,7 +12,7 @@ export interface ISocialLinks {
 }
 
 export interface IEmployer extends Document {
-    userId: Types.ObjectId;
+    userId: string;
 
     // Company Info
     companyName: string;
@@ -46,7 +46,7 @@ const socialLinksSchema = new Schema<ISocialLinks>({
 }, { _id: false });
 
 const employerSchema = new Schema<IEmployer>({
-    userId: { type: Schema.Types.ObjectId, ref: 'users', required: true, unique: true },
+    userId: { type: String, required: true, unique: true },
 
     // Company Info
     companyName: { type: String, required: true },

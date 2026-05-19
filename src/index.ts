@@ -2,14 +2,21 @@ import { createApplication } from './app';
 import CONFIG from './config/config';
 import connectDb from './config/db';
 import { createServerWithSocket } from './server';
+import { loadPublicKey } from './utils/authService';
 
-const app = createApplication(CONFIG.FRONTEND_URL);
-const { server } = createServerWithSocket(app);
+const main = async () => {
+    await loadPublicKey();
+    connectDb();
 
-// Connect to MongoDb
-connectDb();
+    const app = createApplication(CONFIG.FRONTEND_URL);
+    const { server } = createServerWithSocket(app);
 
-// Start the server
-server.listen(CONFIG.PORT, () => {
-    console.log(`Server is running on port ${CONFIG.PORT}`);
+    server.listen(CONFIG.PORT, () => {
+        console.log(`Server is running on port ${CONFIG.PORT}`);
+    });
+};
+
+main().catch((err) => {
+    console.error('Startup failed:', err);
+    process.exit(1);
 });

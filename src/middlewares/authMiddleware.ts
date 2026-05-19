@@ -1,8 +1,7 @@
 import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { AuthenticatedRequest } from '../types';
-import CONFIG from '../config/config';
-
+import { getPublicKey } from '../utils/authService';
 
 export const authenticate = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const token = req.headers.authorization?.split(' ')[1];
@@ -13,10 +12,11 @@ export const authenticate = (req: AuthenticatedRequest, res: Response, next: Nex
     }
 
     try {
-        const decoded = jwt.verify(token, CONFIG.SECRET_KEY) as Record<string, any>; // Use a flexible type for the decoded token
-        req.user = decoded; // Attach the entire decoded payload to req.user
+        const decoded = jwt.verify(token, getPublicKey(), { algorithms: ['RS256'] }) as Record<string, any>;
+        req.user = decoded;
         next();
     } catch (error) {
         res.status(401).json({ error: 'Invalid token' });
     }
 };
+

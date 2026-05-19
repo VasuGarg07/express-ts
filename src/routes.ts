@@ -1,6 +1,5 @@
 import { Application } from 'express';
 
-import authRoutes from './modules/auth/authRoutes';
 import blogRouter from './modules/blogs/blogRoutes';
 import notebookRouter from './modules/blogs/notebookRoutes';
 import expenseRouter from './modules/expenses/expenseRoutes';
@@ -11,7 +10,6 @@ import { authenticate } from './middlewares/authMiddleware';
 
 export const initRoutes = (app: Application) => {
     // Public Routes
-    app.use('/api/auth', authRoutes);
     app.use('/api/formlyst/public', formsPublicRouter);
 
     // Authentication Middleware

@@ -1,9 +1,9 @@
 // notebook.model.ts
-import mongoose, { Document, Schema, Types } from "mongoose";
+import mongoose, { Document, Schema } from "mongoose";
 import { handleDocTransform } from "../../utils/utilities";
 
 interface INotebook extends Document {
-    userId: Types.ObjectId;
+    userId: string;
     author: string;
     title: string;
     description?: string;
@@ -13,7 +13,7 @@ interface INotebook extends Document {
 
 const notebookSchema = new Schema<INotebook>(
     {
-        userId: { type: Schema.Types.ObjectId, required: true, ref: "users" },
+        userId: { type: String, required: true },
         author: { type: String, required: true },
         title: { type: String, required: true, unique: true },
         description: { type: String, maxlength: 500 },
