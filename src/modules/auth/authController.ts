@@ -1,6 +1,8 @@
 import { NextFunction, Request, Response } from 'express';
 import * as authService from './authService';
 import { SUCCESS_STRINGS } from '../../utils/response.string';
+import CONFIG from '../../config/config';
+import { ApiError } from '../../utils/ApiError';
 
 export const createTestToken = (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -55,6 +57,17 @@ export const logout = async (req: Request, res: Response, next: NextFunction) =>
   try {
     await authService.logoutUser(req.body.refreshToken);
     res.status(200).json({ message: 'Logged out successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const googleCallback = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = req.user as any;
+    const { accessToken, refreshToken, origin } = await authService.googleCallbackUser(user, req.query.state as string);
+    const redirectUrl = `${origin}/auth/callback?accessToken=${accessToken}&refreshToken=${refreshToken}`;
+    res.redirect(redirectUrl);
   } catch (error) {
     next(error);
   }

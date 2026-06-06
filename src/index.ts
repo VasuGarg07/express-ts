@@ -3,7 +3,7 @@ import CONFIG from './config/config';
 import connectDb from './config/db';
 import { createServerWithSocket } from './server';
 
-const app = createApplication(CONFIG.FRONTEND_URL);
+const app = createApplication(CONFIG.ALLOWED_ORIGINS);
 const { server } = createServerWithSocket(app);
 
 // Connect to MongoDb

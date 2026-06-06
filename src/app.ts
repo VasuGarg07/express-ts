@@ -4,8 +4,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { initRoutes } from "./routes";
 import { errorHandler } from "./middlewares/errorMiddleware";
+import passport from "passport";
 
-export const createApplication = (frontendUrl: string) => {
+export const createApplication = (allowedOrigins: string[]) => {
     const app = express();
 
     const limiter = rateLimit({
@@ -15,9 +16,11 @@ export const createApplication = (frontendUrl: string) => {
     });
 
     app.use(helmet());
-    app.use(cors({ origin: frontendUrl, credentials: true }));
+    app.use(cors({ origin: allowedOrigins, credentials: true }));
     app.use(limiter);
     app.use(express.json());
+    app.use(passport.initialize());
+
 
     // Initialize routes
     initRoutes(app);
