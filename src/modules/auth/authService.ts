@@ -13,6 +13,26 @@ export const generateTestToken = (id: string, username: string, email: string) =
   return { accessToken };
 };
 
+const issueTokens = async (user: any) => {
+  const accessToken = jwt.sign(
+    { id: user._id, username: user.username, email: user.email },
+    secretKey,
+    { expiresIn: '2h' }
+  );
+  const refreshToken = jwt.sign(
+    { id: user._id, username: user.username, email: user.email },
+    secretKey,
+    { expiresIn: '1d' }
+  );
+  await RefreshToken.create({
+    tokenHash: hashToken(refreshToken),
+    userId: user._id,
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  });
+
+  return { accessToken, refreshToken };
+}
+
 export const registerUser = async (
   username: string,
   email: string,
@@ -45,7 +65,6 @@ export const registerUser = async (
 export const loginUser = async (username: string, password: string) => {
   const user = await User.findOne({ $or: [{ username }, { email: username }] });
 
-  // Combine "user not found" and "wrong password" into one response to prevent enumeration
   if (!user || !user.password) {
     throw new ApiError(401, ERROR_STRINGS.InvalidCreds);
   }
@@ -55,24 +74,7 @@ export const loginUser = async (username: string, password: string) => {
     throw new ApiError(401, ERROR_STRINGS.InvalidCreds);
   }
 
-  const accessToken = jwt.sign(
-    { id: user._id, username: user.username, email: user.email },
-    secretKey,
-    { expiresIn: '2h' }
-  );
-  const refreshToken = jwt.sign(
-    { id: user._id, username: user.username, email: user.email },
-    secretKey,
-    { expiresIn: '1d' }
-  );
-
-  await RefreshToken.create({
-    tokenHash: hashToken(refreshToken),
-    userId: user._id,
-    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-  });
-
-  return { accessToken, refreshToken };
+  return issueTokens(user);
 };
 
 export const changeUserPassword = async (
@@ -124,28 +126,20 @@ export const refreshTokens = async (refreshToken: string) => {
   }
 
   await RefreshToken.deleteOne({ tokenHash: incomingHash });
-
-  const newAccessToken = jwt.sign(
-    { id: user._id, username: user.username, email: user.email },
-    secretKey,
-    { expiresIn: '2h' }
-  );
-  const newRefreshToken = jwt.sign(
-    { id: user._id, username: user.username, email: user.email },
-    secretKey,
-    { expiresIn: '1d' }
-  );
-
-  await RefreshToken.create({
-    tokenHash: hashToken(newRefreshToken),
-    userId: user._id,
-    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-  });
-
-  return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+  return issueTokens(user);
 };
 
 export const logoutUser = async (refreshToken: string) => {
   if (!refreshToken) return;
   await RefreshToken.deleteOne({ tokenHash: hashToken(refreshToken) });
 };
+
+export const googleCallbackUser = async (user: any, requestOrigin?: string) => {
+  const origin = requestOrigin as string || CONFIG.ALLOWED_ORIGINS[0];
+  if (!CONFIG.ALLOWED_ORIGINS.includes(origin)) {
+    throw new ApiError(400, 'Invalid redirect origin');
+  }
+
+  const tokens = await issueTokens(user);
+  return {origin, ...tokens}
+}

@@ -8,7 +8,7 @@ export const createServerWithSocket = (app: Application) => {
     const server = createServer(app);
 
     const io = new Server(server, {
-        cors: { origin: CONFIG.FRONTEND_URL, credentials: true }
+        cors: { origin: CONFIG.ALLOWED_ORIGINS, credentials: true }
     });
 
     initSocket(io);
