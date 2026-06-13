@@ -1,12 +1,5 @@
 import dotenv from 'dotenv';
-import fs from 'fs';
-
-// Load environment variables from `.env.local` if it exists, otherwise `.env`.
-if (fs.existsSync('.env.local')) {
-    dotenv.config({ path: '.env.local' });
-} else {
-    dotenv.config();
-}
+dotenv.config();
 
 const PORT = process.env.PORT || 3000;
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || ['*'];

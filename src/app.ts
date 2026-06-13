@@ -21,6 +21,10 @@ export const createApplication = (allowedOrigins: string[]) => {
     app.use(express.json());
     app.use(passport.initialize());
 
+    // Health Check
+    app.get('/health', (req, res) => {
+        res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+    });
 
     // Initialize routes
     initRoutes(app);
