@@ -1,6 +1,6 @@
 import { NextFunction, Response } from 'express';
-import * as employerJobsService from './employerService';
-import { AuthenticatedRequest } from '../../types';
+import * as employerJobsService from '../services/employerService';
+import { AuthenticatedRequest } from '../../../types';
 
 export const getMyJobs = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
@@ -51,6 +51,19 @@ export const toggleArchiveJob = async (req: AuthenticatedRequest, res: Response,
   try {
     const { isArchived, status } = await employerJobsService.toggleArchive(res.locals.profileId, req.params.id as string);
     res.status(200).json({ message: `Job ${status} successfully`, isArchived });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateApplicationStatus = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await employerJobsService.updateApplicationStatus(
+      res.locals.profileId,
+      req.params.id as string,
+      req.body
+    );
+    res.status(200).json({ message: 'Application status updated successfully', ...result });
   } catch (error) {
     next(error);
   }

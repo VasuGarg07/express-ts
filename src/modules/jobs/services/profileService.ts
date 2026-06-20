@@ -1,7 +1,8 @@
-import { Applicant } from './applicantModel';
-import { Employer } from './employerModel';
-import { Job } from './jobModel';
-import { ApiError } from '../../utils/ApiError';
+import { Applicant } from '../models/applicantModel';
+import { Employer } from '../models/employerModel';
+import { Job } from '../models/jobModel';
+import { ApiError } from '../../../utils/ApiError';
+import { ApplicantInput, EmployerInput } from '../validators/jobValidators';
 
 export const fetchProfile = async (role: string, profileId: string) => {
   let profile;
@@ -16,7 +17,7 @@ export const fetchProfile = async (role: string, profileId: string) => {
 };
 
 
-export const registerNewApplicant = async (userId: string, data: any) => {
+export const registerNewApplicant = async (userId: string, data: Partial<ApplicantInput>) => {
   if (!userId) {
     throw new ApiError(401, 'Unauthorized');
   }
@@ -31,7 +32,7 @@ export const registerNewApplicant = async (userId: string, data: any) => {
   return applicant;
 };
 
-export const registerNewEmployer = async (userId: string, data: any) => {
+export const registerNewEmployer = async (userId: string, data: Partial<EmployerInput>) => {
   if (!userId) {
     throw new ApiError(401, 'Unauthorized');
   }
@@ -46,7 +47,7 @@ export const registerNewEmployer = async (userId: string, data: any) => {
   return employer;
 };
 
-export const editProfile = async (role: string, profileId: string, data: any) => {
+export const editProfile = async (role: string, profileId: string, data: Partial<ApplicantInput> | Partial<EmployerInput>) => {
   let updated;
   if (role === 'applicant') {
     updated = await Applicant.findByIdAndUpdate(profileId, data, { new: true, runValidators: true });

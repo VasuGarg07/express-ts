@@ -1,12 +1,12 @@
-import * as applicantService from '../../src/modules/jobs/applicantService';
-import { Applicant } from '../../src/modules/jobs/applicantModel';
-import { Employer } from '../../src/modules/jobs/employerModel';
-import { Job } from '../../src/modules/jobs/jobModel';
+import * as applicantService from '../../src/modules/jobs/services/applicantService';
+import { Applicant } from '../../src/modules/jobs/models/applicantModel';
+import { Employer } from '../../src/modules/jobs/models/employerModel';
+import { Job } from '../../src/modules/jobs/models/jobModel';
 import { Types } from 'mongoose';
 
-jest.mock('../../src/modules/jobs/applicantModel');
-jest.mock('../../src/modules/jobs/employerModel');
-jest.mock('../../src/modules/jobs/jobModel');
+jest.mock('../../src/modules/jobs/models/applicantModel');
+jest.mock('../../src/modules/jobs/models/employerModel');
+jest.mock('../../src/modules/jobs/models/jobModel');
 
 describe('applicantService', () => {
 

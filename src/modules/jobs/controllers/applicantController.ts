@@ -1,10 +1,11 @@
 import { NextFunction, Request, Response } from 'express';
-import * as jobsService from './applicantService';
-import { AuthenticatedRequest } from '../../types';
+import * as jobsService from '../services/applicantService';
+import { AuthenticatedRequest } from '../../../types';
 
 export const getJobs = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await jobsService.fetchJobs(req.query as any);
+    const { page, limit, search, location } = req.query as Record<string, string>;
+    const result = await jobsService.fetchJobs({ page, limit, search, location });
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -58,7 +59,8 @@ export const getSavedJobs = async (req: AuthenticatedRequest, res: Response, nex
 
 export const getCompanies = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await jobsService.fetchCompanies(req.query as any);
+    const { page, limit, search } = req.query as Record<string, string>;
+    const result = await jobsService.fetchCompanies({ page, limit, search });
     res.status(200).json(result);
   } catch (error) {
     next(error);

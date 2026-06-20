@@ -11,16 +11,17 @@ const { server } = createServerWithSocket(app);
 // Connect to MongoDb
 connectDb();
 
-cron.schedule('*/14 * * * *', () => {
-  const url = process.env.BASE_URL || 'http://localhost:3000';
-
-  https.get(`${url}/health`, (res) => {
-    console.log(`[cron] Health check ping — status: ${res.statusCode}`);
-  }).on('error', (err) => {
-    console.error('[cron] Health check failed:', err.message);
+if (CONFIG.NODE_ENV === "prod") {
+  cron.schedule('*/14 * * * *', () => {
+    const url = process.env.BASE_URL || 'http://localhost:3000';
+  
+    https.get(`${url}/health`, (res) => {
+      console.log(`[cron] Health check ping — status: ${res.statusCode}`);
+    }).on('error', (err) => {
+      console.error('[cron] Health check failed:', err.message);
+    });
   });
-});
-
+}
 
 // Start the server
 server.listen(CONFIG.PORT, () => {

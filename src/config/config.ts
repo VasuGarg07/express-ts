@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+const NODE_ENV = process.env.NODE_ENV ?? "dev";
 const PORT = process.env.PORT || 3000;
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || ['*'];
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/boilerplate';
@@ -13,6 +14,7 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "your_google_cl
 const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || "http://localhost:3000/api/auth/google/callback";
 
 const CONFIG = {
+    NODE_ENV,
     PORT,
     ALLOWED_ORIGINS,
     MONGO_URI,

@@ -1,11 +1,11 @@
-import * as profileService from '../../src/modules/jobs/profileService';
-import { Applicant } from '../../src/modules/jobs/applicantModel';
-import { Employer } from '../../src/modules/jobs/employerModel';
-import { Job } from '../../src/modules/jobs/jobModel';
+import * as profileService from '../../src/modules/jobs/services/profileService';
+import { Applicant } from '../../src/modules/jobs/models/applicantModel';
+import { Employer } from '../../src/modules/jobs/models/employerModel';
+import { Job } from '../../src/modules/jobs/models/jobModel';
 
-jest.mock('../../src/modules/jobs/applicantModel');
-jest.mock('../../src/modules/jobs/employerModel');
-jest.mock('../../src/modules/jobs/jobModel');
+jest.mock('../../src/modules/jobs/models/applicantModel');
+jest.mock('../../src/modules/jobs/models/employerModel');
+jest.mock('../../src/modules/jobs/models/jobModel');
 
 describe('profileService', () => {
 
