@@ -1,10 +1,10 @@
-import * as employerService from '../../src/modules/jobs/employerService';
-import { Applicant } from '../../src/modules/jobs/applicantModel';
-import { Job } from '../../src/modules/jobs/jobModel';
+import * as employerService from '../../src/modules/jobs/services/employerService';
+import { Applicant } from '../../src/modules/jobs/models/applicantModel';
+import { Job } from '../../src/modules/jobs/models/jobModel';
 import { Types } from 'mongoose';
 
-jest.mock('../../src/modules/jobs/applicantModel');
-jest.mock('../../src/modules/jobs/jobModel');
+jest.mock('../../src/modules/jobs/models/applicantModel');
+jest.mock('../../src/modules/jobs/models/jobModel');
 
 describe('employerService', () => {
 
@@ -22,9 +22,7 @@ describe('employerService', () => {
 
       (Job.find as jest.Mock).mockReturnValue({
         select: jest.fn().mockReturnValue({
-          sort: jest.fn().mockReturnValue({
-            lean: jest.fn().mockResolvedValue(jobs),
-          }),
+          sort: jest.fn().mockResolvedValue(jobs),
         }),
       });
 
@@ -37,9 +35,7 @@ describe('employerService', () => {
     it('should return empty list when employer has no jobs', async () => {
       (Job.find as jest.Mock).mockReturnValue({
         select: jest.fn().mockReturnValue({
-          sort: jest.fn().mockReturnValue({
-            lean: jest.fn().mockResolvedValue([]),
-          }),
+          sort: jest.fn().mockResolvedValue([]),
         }),
       });
 

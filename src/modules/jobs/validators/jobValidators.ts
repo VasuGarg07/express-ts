@@ -1,7 +1,6 @@
 import { z } from "zod";
 
-// ==================== SHARED SCHEMAS ====================
-
+// Shared Schemas
 const experienceSchema = z.object({
     title: z.string().min(1, "Title is required"),
     company: z.string().min(1, "Company is required"),
@@ -40,34 +39,27 @@ const preferenceSchema = z.object({
     industries: z.array(z.string()).optional()
 });
 
-// ==================== APPLICANT SCHEMAS ====================
-
+// Candidate Schemas
 export const applicantSchema = z.object({
-    // Basic Info
     fullName: z.string().min(1, "Full name is required"),
     contactEmail: z.string().email("Invalid email"),
     phoneNumber: z.string().min(10, "Phone must be at least 10 digits").max(15, "Phone must be at most 15 digits"),
     photoUrl: z.string().url("Invalid URL").optional(),
     profileSummary: z.string().optional(),
-
-    // Professional
     resumeURL: z.string().url("Invalid resume URL"),
     skills: z.array(z.string().min(1, "Skill cannot be empty")).min(1, "At least one skill required"),
     languages: z.array(z.string().min(1, "Language cannot be empty")).min(1, "At least one language required"),
     experience: z.array(experienceSchema).optional(),
     education: z.array(educationSchema).optional(),
     preference: preferenceSchema,
-
-    // Social
     socialLinks: applicantSocialLinksSchema
 });
 
 export const applicantUpdateSchema = applicantSchema.partial();
 
-// ==================== EMPLOYER SCHEMAS ====================
+// Employer Schema
 
 export const employerSchema = z.object({
-    // Company Info
     companyName: z.string().min(1, "Company name is required"),
     logoURL: z.string().url("Invalid logo URL"),
     industry: z.string().min(1, "Industry is required"),
@@ -75,52 +67,49 @@ export const employerSchema = z.object({
     websiteUrl: z.string().url("Invalid website URL").optional(),
     employeeStrength: z.string().min(1, "Employee strength is required"),
     yearOfEstablishment: z.string().min(1, "Year of establishment is required"),
-
-    // Contact
     contactEmail: z.string().email("Invalid email"),
     contactNumber: z.string().min(10, "Phone must be at least 10 digits").max(15, "Phone must be at most 15 digits"),
-
-    // About
     companyOverview: z.string().optional(),
     companyVision: z.string().optional(),
-
-    // Social
     socialLinks: employerSocialLinksSchema
 });
 
 export const employerUpdateSchema = employerSchema.partial();
 
-// ==================== JOB SCHEMAS ====================
-
+// Job Schemas
 export const jobSchema = z.object({
-    // Basic Info
     title: z.string().min(1, "Title is required"),
     location: z.string().min(1, "Location is required"),
     jobLevel: z.enum(['internship', 'entry-level', 'mid-level', 'senior-level', 'lead', 'manager']),
     vacancies: z.number().int().positive("Vacancies must be positive").default(1),
-
-    // Employment Details
     employmentType: z.enum(['full-time', 'part-time', 'contractual', 'freelance', 'internship']),
     shiftType: z.enum(['day', 'night', 'flexible']),
     salaryRange: z.string().min(1, "Salary range is required"),
     experienceRequired: z.string().min(1, "Experience requirement is required"),
-
-    // Content
     description: z.string().min(1, "Description is required"),
-    requirements: z.string().min(1, "Requirements are required"),
-    responsibilities: z.string().optional(),
-    benefits: z.string().optional(),
-
-    // Skills & Tags
+    requirements: z.array(z.string().min(1, "Requirement cannot be empty")).min(1, "At least one requirement required"),
+    responsibilities: z.array(z.string().min(1, "Responsibility cannot be empty")).optional(),
+    benefits: z.array(z.string().min(1, "Benefit cannot be empty")).optional(),
     skillsRequired: z.array(z.string().min(1, "Skill cannot be empty")).min(1, "At least one skill required"),
     tags: z.array(z.string()).optional()
 });
 
 export const jobUpdateSchema = jobSchema.partial();
 
-// ==================== APPLICATION SCHEMA ====================
-
+// Application Schema (jobId comes from the route param, not the body)
 export const applyJobSchema = z.object({
-    jobId: z.string().min(1, "Job ID is required"),
     coverLetter: z.string().optional()
 });
+
+// Application status update (jobId comes from the route param)
+export const applicationStatusSchema = z.object({
+    applicantId: z.string().min(1, "Applicant ID is required"),
+    status: z.enum(['pending', 'shortlisted', 'rejected', 'contacted', 'hired'])
+});
+
+// Inferred types
+export type ApplicantInput = z.infer<typeof applicantSchema>;
+export type EmployerInput = z.infer<typeof employerSchema>;
+export type JobInput = z.infer<typeof jobSchema>;
+export type JobUpdateInput = z.infer<typeof jobUpdateSchema>;
+export type ApplicationStatusInput = z.infer<typeof applicationStatusSchema>;

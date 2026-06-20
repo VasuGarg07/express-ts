@@ -1,86 +1,20 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
-import { handleDocTransform } from "../../utils/utilities";
+import { handleDocTransform } from "../../../utils/utilities";
 
-// ==================== INTERFACES ====================
-
-export interface IExperience {
-    title: string;
-    company: string;
-    duration: string;
-    description: string;
-}
-
-export interface IEducation {
-    degree: string;
-    institution: string;
-    year: string;
-}
-
-export interface ISocialLinks {
-    twitter?: string;
-    youtube?: string;
-    github?: string;
-    linkedin?: string;
-    website?: string;
-}
-
-export interface IPreference {
-    expectedSalary: number;
-    jobType: 'full-time' | 'part-time' | 'contractual' | 'freelance' | 'internship';
-    locations: string[];
-    shift?: 'day' | 'night' | 'flexible';
-    roles?: string[];
-    industries?: string[];
-}
-
-export interface IApplication {
-    jobId: Types.ObjectId;
-    coverLetter?: string;
-    appliedAt: Date;
-}
-
-export interface IApplicant extends Document {
-    userId: Types.ObjectId;
-
-    // Basic Info
-    fullName: string;
-    contactEmail: string;
-    phoneNumber: string;
-    photoUrl?: string;
-    profileSummary?: string;
-
-    // Professional
-    resumeURL: string;
-    skills: string[];
-    languages: string[];
-    experience?: IExperience[];
-    education?: IEducation[];
-    preference: IPreference;
-
-    // Social
-    socialLinks?: ISocialLinks;
-
-    // User Actions
-    savedJobs: Types.ObjectId[];
-    applications: IApplication[];
-}
-
-// ==================== SCHEMA ====================
-
-const experienceSchema = new Schema<IExperience>({
+const experienceSchema = new Schema({
     title: { type: String, required: true },
     company: { type: String, required: true },
     duration: { type: String, required: true },
     description: { type: String, required: true }
 }, { _id: false });
 
-const educationSchema = new Schema<IEducation>({
+const educationSchema = new Schema({
     degree: { type: String, required: true },
     institution: { type: String, required: true },
     year: { type: String, required: true }
 }, { _id: false });
 
-const socialLinksSchema = new Schema<ISocialLinks>({
+const socialLinksSchema = new Schema({
     twitter: { type: String },
     youtube: { type: String },
     github: { type: String },
@@ -88,7 +22,7 @@ const socialLinksSchema = new Schema<ISocialLinks>({
     website: { type: String }
 }, { _id: false });
 
-const preferenceSchema = new Schema<IPreference>({
+const preferenceSchema = new Schema({
     expectedSalary: { type: Number, required: true },
     jobType: {
         type: String,
@@ -104,31 +38,30 @@ const preferenceSchema = new Schema<IPreference>({
     industries: { type: [String] }
 }, { _id: false });
 
-const applicationSchema = new Schema<IApplication>({
+const applicationSchema = new Schema({
     jobId: { type: Schema.Types.ObjectId, ref: 'jobs', required: true },
     coverLetter: { type: String },
+    status: {
+        type: String,
+        enum: ['pending', 'shortlisted', 'rejected', 'contacted', 'hired'],
+        default: 'pending'
+    },
     appliedAt: { type: Date, default: Date.now }
 }, { _id: false });
 
-const applicantSchema = new Schema<IApplicant>({
+const applicantSchema = new Schema({
     userId: { type: Schema.Types.ObjectId, ref: 'users', required: true, unique: true },
-
-    // Basic Info
     fullName: { type: String, required: true },
     contactEmail: { type: String, required: true },
     phoneNumber: { type: String, required: true },
     photoUrl: { type: String },
     profileSummary: { type: String },
-
-    // Professional
     resumeURL: { type: String, required: true },
     skills: { type: [String], required: true },
     languages: { type: [String], required: true },
     experience: [experienceSchema],
     education: [educationSchema],
     preference: { type: preferenceSchema, required: true },
-
-    // Social
     socialLinks: socialLinksSchema,
 
     // User Actions
@@ -139,4 +72,4 @@ const applicantSchema = new Schema<IApplicant>({
     toJSON: { transform: handleDocTransform }
 });
 
-export const Applicant = mongoose.model<IApplicant>('applicants', applicantSchema);
+export const Applicant = mongoose.model('applicants', applicantSchema);

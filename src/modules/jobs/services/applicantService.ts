@@ -1,9 +1,16 @@
 import mongoose from 'mongoose';
-import { Applicant } from './applicantModel';
-import { Employer } from './employerModel';
-import { Job } from './jobModel';
-import { ApiError } from '../../utils/ApiError';
-import { validateObjectId } from '../../utils/utilities';
+import { Applicant } from '../models/applicantModel';
+import { Employer } from '../models/employerModel';
+import { Job } from '../models/jobModel';
+import { ApiError } from '../../../utils/ApiError';
+import { validateObjectId } from '../../../utils/utilities';
+
+interface ListQuery {
+  page?: string;
+  limit?: string;
+  search?: string;
+  location?: string;
+}
 
 const getApplicantOrFail = async (profileId: string) => {
   const applicant = await Applicant.findById(profileId);
@@ -21,12 +28,12 @@ const getActiveJobOrFail = async (id: string) => {
   return job;
 };
 
-export const fetchJobs = async (query: { page?: string; limit?: string; search?: string; location?: string }) => {
+export const fetchJobs = async (query: ListQuery) => {
   const page = parseInt(query.page || '1');
   const limit = parseInt(query.limit || '10');
   const skip = (page - 1) * limit;
 
-  const filter: any = { isArchived: false };
+  const filter: Record<string, unknown> = { isArchived: false };
   if (query.search) filter.title = { $regex: query.search, $options: 'i' };
   if (query.location) filter.location = { $regex: query.location, $options: 'i' };
 
@@ -94,9 +101,10 @@ export const fetchJobDetails = async (id: string) => {
         applicationCount: { $size: '$applications' },
         companyName: '$employer.companyName',
         logoURL: '$employer.logoURL',
+        id: '$_id',
       },
     },
-    { $project: { applications: 0, employer: 0, __v: 0 } },
+    { $project: { applications: 0, employer: 0, __v: 0, _id: 0, postedBy: 0 } },
   ]);
 
   if (!result.length) {
@@ -147,6 +155,7 @@ export const fetchMyApplications = async (profileId: string) => {
     logoURL: app.jobId.postedBy.logoURL,
     appliedAt: app.appliedAt.getTime(),
     coverLetter: app.coverLetter,
+    status: app.status,
   }));
 };
 
@@ -191,12 +200,12 @@ export const fetchSavedJobs = async (profileId: string) => {
   }));
 };
 
-export const fetchCompanies = async (query: { page?: string; limit?: string; search?: string }) => {
+export const fetchCompanies = async (query: ListQuery) => {
   const page = parseInt(query.page || '1');
   const limit = parseInt(query.limit || '10');
   const skip = (page - 1) * limit;
 
-  const filter: any = {};
+  const filter: Record<string, unknown> = {};
   if (query.search) filter.companyName = { $regex: query.search, $options: 'i' };
 
   const companies = await Employer.aggregate([

@@ -33,11 +33,11 @@ export const getPaginationParams = (query: PaginationQuery) => {
 
 export const handleDocTransform = <T>(doc: T, ret: any): T => {
     const { _id, __v, createdAt, updatedAt, ...rest } = ret;
-    return { 
+    return {
         id: _id,
-        createdAt: createdAt.getTime(),
-        updatedAt: updatedAt.getTime(),
-        ...rest 
+        ...(createdAt && { createdAt: createdAt.getTime() }),
+        ...(updatedAt && { updatedAt: updatedAt.getTime() }),
+        ...rest
     };
 }
 

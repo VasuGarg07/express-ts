@@ -1,23 +1,17 @@
 import { NextFunction, Response } from "express";
-import { AuthenticatedRequest } from "../../types";
-import { Applicant } from "./applicantModel";
-import { Employer } from "./employerModel";
+import { AuthenticatedRequest } from "../../../types";
+import { ApiError } from "../../../utils/ApiError";
+import { Applicant } from "../models/applicantModel";
+import { Employer } from "../models/employerModel";
 
 // Auto-detects role from DB and attaches to locals
-export const extractRole = async (
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction
-) => {
+export const extractRole = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         const userId = req.user?.id;
-
         if (!userId) {
-            res.status(401).json({ error: "Unauthorized" });
-            return;
+            throw new ApiError(401, "Unauthorized");
         }
 
-        // Check if applicant
         const applicant = await Applicant.findOne({ userId }).select('_id').lean();
         if (applicant) {
             res.locals.role = "applicant";
@@ -26,7 +20,6 @@ export const extractRole = async (
             return;
         }
 
-        // Check if employer
         const employer = await Employer.findOne({ userId }).select('_id').lean();
         if (employer) {
             res.locals.role = "employer";
@@ -35,70 +28,50 @@ export const extractRole = async (
             return;
         }
 
-        // No profile found
-        res.status(404).json({ error: "Profile not found" });
+        throw new ApiError(404, "Profile not found");
     } catch (error) {
-        console.error("Extract Role Error:", error);
-        res.status(500).json({ error: "Server error" });
+        next(error);
     }
 };
 
 // Ensures user has applicant profile
-export const isApplicant = async (
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction
-) => {
+export const isApplicant = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         const userId = req.user?.id;
-
         if (!userId) {
-            res.status(401).json({ error: "Unauthorized" });
-            return;
+            throw new ApiError(401, "Unauthorized");
         }
 
         const applicant = await Applicant.findOne({ userId }).select('_id').lean();
-
         if (!applicant) {
-            res.status(403).json({ error: "Applicant profile required" });
-            return;
+            throw new ApiError(403, "Applicant profile required");
         }
 
         res.locals.role = "applicant";
         res.locals.profileId = applicant._id.toString();
         next();
     } catch (error) {
-        console.error("Is Applicant Error:", error);
-        res.status(500).json({ error: "Server error" });
+        next(error);
     }
 };
 
 // Ensures user has employer profile
-export const isEmployer = async (
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction
-) => {
+export const isEmployer = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         const userId = req.user?.id;
-
         if (!userId) {
-            res.status(401).json({ error: "Unauthorized" });
-            return;
+            throw new ApiError(401, "Unauthorized");
         }
 
         const employer = await Employer.findOne({ userId }).select('_id').lean();
-
         if (!employer) {
-            res.status(403).json({ error: "Employer profile required" });
-            return;
+            throw new ApiError(403, "Employer profile required");
         }
 
         res.locals.role = "employer";
         res.locals.profileId = employer._id.toString();
         next();
     } catch (error) {
-        console.error("Is Employer Error:", error);
-        res.status(500).json({ error: "Server error" });
+        next(error);
     }
 };
