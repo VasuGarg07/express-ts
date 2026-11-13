@@ -14,7 +14,6 @@ A single Express + TypeScript server that acts as the unified backend for multip
 
 - 💸 **Expenses** — A personal expense tracker. Users log and categorize expenses, and the client renders charts and summaries for a visual breakdown of spending.
 
-- 🧩 **Forms** — Users can build forms — including **nested forms** — configure their full structure and validation rules, and save the configuration to the database. A shareable link is generated per form; anyone with the link gets the form built entirely at runtime from the stored config. Responses are persisted to the DB.
 
 - 🧾 **Invoices** *(Deprecated)* — A server-side PDF invoice generator. Shelved due to the lack of a library capable of producing authentic-looking output. May be revived in the future.
 
